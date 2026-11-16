@@ -2,3 +2,7 @@ bin/
 obj/
 .vs/
 *.user
+
+# SoundFont files are large (FluidR3_GM is ~148 MB; GitHub rejects >100 MB). Get them separately.
+SoundFonts/*.sf2
+SoundFonts/*.sf3

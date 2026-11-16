@@ -2,9 +2,21 @@ using System.Runtime.InteropServices;
 
 namespace MyPiano;
 
-/// <summary>Thin wrapper over the Windows winmm MIDI output API (port of Vbmidi.bas).</summary>
-public sealed class MidiOut : IDisposable
+/// <summary>Anything that can play MIDI notes: a hardware/OS device or the built-in SoundFont synth.</summary>
+public interface IMidiSink
 {
+    void NoteOn(int channel, int note, int velocity);
+    void NoteOff(int channel, int note);
+    void ChangeInstrument(int channel, int program);
+    /// <summary>Stops any hanging notes.</summary>
+    void Silence();
+}
+
+/// <summary>Thin wrapper over the Windows winmm MIDI output API (port of Vbmidi.bas).</summary>
+public sealed class MidiOut : IMidiSink, IDisposable
+{
+    private int _deviceId;
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct MIDIOUTCAPS
     {
@@ -56,6 +68,7 @@ public sealed class MidiOut : IDisposable
     public void Open(int deviceId)
     {
         Close();
+        _deviceId = deviceId;
         if (midiOutOpen(out _handle, (uint)deviceId, IntPtr.Zero, IntPtr.Zero, 0) != 0)
         {
             _handle = IntPtr.Zero;
@@ -86,6 +99,12 @@ public sealed class MidiOut : IDisposable
         Send(0xB0, channel, 0, 0);   // bank select MSB
         Send(0xB0, channel, 32, 0);  // bank select LSB
         Send(0xC0, channel, program);
+    }
+
+    // Closing and reopening the device cuts off any sounding notes (as the VB6 version did).
+    public void Silence()
+    {
+        if (IsOpen) Open(_deviceId);
     }
 
     public void Dispose() => Close();

@@ -25,7 +25,9 @@ public sealed partial class MainWindow : Window
     private static readonly string[] NoteNames = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
     private static readonly int[] BlackSemitones = { 1, 3, 6, 8, 10 };
 
-    private readonly MidiOut _midi = new();
+    private readonly MidiOut _hardware = new();
+    private SoundFontSynth? _synth;
+    private IMidiSink _midi;
     private readonly Settings _settings = Settings.Load();
     private readonly DispatcherTimer _beatTimer = new();
 
@@ -68,7 +70,27 @@ public sealed partial class MainWindow : Window
         // Devices
         _devices = MidiOut.GetDeviceNames();
         if (_settings.DeviceId >= _devices.Count) _settings.DeviceId = 0;
-        OpenDevice(_settings.DeviceId);
+        _midi = _hardware;
+        if (string.IsNullOrEmpty(_settings.SoundFontPath) || !File.Exists(_settings.SoundFontPath))
+        {
+            // First run (or file moved): use the first .sf2 found in SoundFonts\ next to the exe.
+            var dir = Path.Combine(AppContext.BaseDirectory, "SoundFonts");
+            var found = Directory.Exists(dir) ? Directory.EnumerateFiles(dir, "*.sf2").FirstOrDefault() : null;
+            if (found is not null)
+            {
+                _settings.SoundFontPath = found;
+                _settings.UseSoundFont = true;
+            }
+        }
+        if (_settings.UseSoundFont && File.Exists(_settings.SoundFontPath) && TryUseSoundFont(_settings.SoundFontPath!))
+        {
+            // using the SoundFont synth
+        }
+        else
+        {
+            _settings.UseSoundFont = false;
+            OpenDevice(_settings.DeviceId);
+        }
 
         SelectBeat(0, start: false);
         SelectInstrument(_settings.Banks[0]);
@@ -84,7 +106,8 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) =>
         {
             _beatTimer.Stop();
-            _midi.Close();
+            _synth?.Dispose();
+            _hardware.Close();
             _settings.Save();
         };
     }
@@ -279,7 +302,7 @@ public sealed partial class MainWindow : Window
                     _baseKey = index;
                     BtnKey.Content = NoteNames[index];
                     ReleaseAll();
-                    OpenDevice(_settings.DeviceId);   // original reopened the device to silence hanging notes
+                    _midi.Silence();   // the original reopened the device to cut off hanging notes
                 };
                 flyout.Items.Add(item);
             }
@@ -300,6 +323,21 @@ public sealed partial class MainWindow : Window
                 };
                 flyout.Items.Add(item);
             }
+
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            if (!string.IsNullOrEmpty(_settings.SoundFontPath) && File.Exists(_settings.SoundFontPath))
+            {
+                var current = new MenuFlyoutItem { Text = "SoundFont synth: " + Path.GetFileName(_settings.SoundFontPath) };
+                current.Click += (_, _) =>
+                {
+                    if (TryUseSoundFont(_settings.SoundFontPath!)) SelectInstrument(_instrSelect);
+                };
+                flyout.Items.Add(current);
+            }
+            var browse = new MenuFlyoutItem { Text = "Load SoundFont (.sf2)…" };
+            browse.Click += async (_, _) => await PickSoundFontAsync();
+            flyout.Items.Add(browse);
+
             flyout.ShowAt(BtnDevice);
         };
 
@@ -356,8 +394,13 @@ public sealed partial class MainWindow : Window
     {
         try
         {
+            ReleaseAll();
+            _synth?.Dispose();
+            _synth = null;
+            _settings.UseSoundFont = false;
             _settings.DeviceId = id;
-            _midi.Open(id);
+            _hardware.Open(id);
+            _midi = _hardware;
             BtnDevice.Content = id < _devices.Count ? _devices[id] : $"Device {id}";
         }
         catch (Exception ex)
@@ -365,6 +408,39 @@ public sealed partial class MainWindow : Window
             BtnDevice.Content = "(none)";
             ShowError(ex.Message);
         }
+    }
+
+    /// <summary>Switches output to the built-in SoundFont synth. Returns false (and shows why) on failure.</summary>
+    private bool TryUseSoundFont(string path)
+    {
+        try
+        {
+            ReleaseAll();
+            var synth = new SoundFontSynth(path);   // load first so a bad file leaves the old output intact
+            _synth?.Dispose();
+            _synth = synth;
+            _hardware.Close();
+            _midi = synth;
+            _settings.SoundFontPath = path;
+            _settings.UseSoundFont = true;
+            BtnDevice.Content = "SoundFont: " + synth.Name;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Could not load SoundFont: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task PickSoundFontAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+        picker.FileTypeFilter.Add(".sf2");
+        var file = await picker.PickSingleFileAsync();
+        if (file is null) return;
+        if (TryUseSoundFont(file.Path)) SelectInstrument(_instrSelect);
     }
 
     private void SelectInstrument(int index)

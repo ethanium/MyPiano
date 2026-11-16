@@ -6,6 +6,10 @@ namespace MyPiano;
 public sealed class Settings
 {
     public int DeviceId { get; set; }
+    /// <summary>Path to a General MIDI SoundFont (.sf2) for the built-in synth.</summary>
+    public string? SoundFontPath { get; set; }
+    /// <summary>True when the built-in SoundFont synth, not a Windows MIDI device, is the output.</summary>
+    public bool UseSoundFont { get; set; }
     public int[] Banks { get; set; } = new int[4];
     public int[] Drums { get; set; } = { 49, 57, 51, 45, 47, 48, 46, 42, 44, 37, 36, 40 };
 

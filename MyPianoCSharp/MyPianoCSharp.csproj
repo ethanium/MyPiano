@@ -21,12 +21,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MeltySynth" Version="2.4.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Instrument.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Optional: any SoundFont dropped in SoundFonts\ is copied next to the exe and auto-detected. -->
+    <None Update="SoundFonts\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
