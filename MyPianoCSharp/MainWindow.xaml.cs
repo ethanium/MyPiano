@@ -36,6 +36,8 @@ public sealed partial class MainWindow : Window
     private readonly bool[] _held = new bool[256];
     private readonly Border[] _keyShapes = new Border[PianoKeys.Length];
     private readonly Button[] _drumPads = new Button[12];
+    private readonly int[] _whitesBefore = new int[PianoKeys.Length];
+    private int _whiteCount;
     private readonly Button[] _bankButtons;
 
     private int _instrSelect;
@@ -111,24 +113,48 @@ public sealed partial class MainWindow : Window
         while (_drumNames.Count < 32) _drumNames.Add($"Drum {_drumNames.Count + 35}");
     }
 
+    private static string KeyLabel(int vk) => vk switch
+    {
+        188 => ",",
+        190 => ".",
+        186 => ";",
+        191 => "/",
+        189 => "-",
+        219 => "[",
+        111 => "/",
+        106 => "*",
+        109 => "-",
+        >= 96 and <= 105 => (vk - 96).ToString(),   // numpad 0-9
+        _ => ((char)vk).ToString(),                 // letters and top-row digits
+    };
+
     private void BuildPiano()
     {
-        const double whiteW = 44, whiteH = 200, blackW = 28, blackH = 120;
         int whiteCount = 0;
-        var blacks = new List<(int i, double x)>();
+        var blacks = new List<int>();
 
         for (int i = 0; i < PianoKeys.Length; i++)
         {
             bool black = BlackSemitones.Contains(i % 12);
             int index = i;
+            _whitesBefore[i] = whiteCount;
             var shape = new Border
             {
-                Width = black ? blackW : whiteW,
-                Height = black ? blackH : whiteH,
                 Background = black ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White),
                 BorderBrush = new SolidColorBrush(Colors.Black),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(0, 0, 4, 4),
+                Child = new TextBlock
+                {
+                    Text = KeyLabel(PianoKeys[i]),
+                    FontSize = 14,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(black ? Colors.White : Colors.Black),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(0, 0, 0, 8),
+                    IsHitTestVisible = false,
+                },
             };
             shape.PointerPressed += (s, e) => { ((UIElement)s).CapturePointer(e.Pointer); SetKey(index, true); };
             shape.PointerReleased += (s, e) => { ((UIElement)s).ReleasePointerCapture(e.Pointer); SetKey(index, false); };
@@ -137,21 +163,43 @@ public sealed partial class MainWindow : Window
 
             if (black)
             {
-                blacks.Add((i, whiteCount * whiteW - blackW / 2));
+                blacks.Add(i);
             }
             else
             {
-                Canvas.SetLeft(shape, whiteCount * whiteW);
                 PianoCanvas.Children.Add(shape);
                 whiteCount++;
             }
         }
-        foreach (var (i, x) in blacks)
-        {
-            Canvas.SetLeft(_keyShapes[i], x);
+        foreach (int i in blacks)
             PianoCanvas.Children.Add(_keyShapes[i]);   // added last => drawn on top
+
+        _whiteCount = whiteCount;
+        PianoHost.SizeChanged += (_, e) => LayoutPiano(e.NewSize.Width, e.NewSize.Height);
+    }
+
+    /// <summary>Scales the keyboard to fill the available space.</summary>
+    private void LayoutPiano(double width, double height)
+    {
+        if (_whiteCount == 0 || width <= 0 || height <= 0) return;
+
+        double whiteW = width / _whiteCount;
+        double whiteH = Math.Max(100, height);
+        double blackW = whiteW * 0.62;
+        double blackH = whiteH * 0.6;
+        double font = Math.Clamp(whiteW * 0.32, 9, 18);
+
+        for (int i = 0; i < _keyShapes.Length; i++)
+        {
+            bool black = BlackSemitones.Contains(i % 12);
+            var shape = _keyShapes[i];
+            shape.Width = black ? blackW : whiteW;
+            shape.Height = black ? blackH : whiteH;
+            Canvas.SetLeft(shape, black ? _whitesBefore[i] * whiteW - blackW / 2 : _whitesBefore[i] * whiteW);
+            if (shape.Child is TextBlock label) label.FontSize = font;
         }
-        PianoCanvas.Width = whiteCount * whiteW;
+        PianoCanvas.Width = width;
+        PianoCanvas.Height = whiteH;
     }
 
     private void BuildDrumPads()
@@ -164,7 +212,7 @@ public sealed partial class MainWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 Padding = new Thickness(0),
-                Content = (i + 1).ToString(),
+                Content = KeyLabel(DrumKeys[i]),
             };
             Grid.SetRow(pad, i / 3);
             Grid.SetColumn(pad, i % 3);

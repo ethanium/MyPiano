@@ -10,56 +10,114 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <!-- Wide: controls on the left, drum pads on the right -->
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="900" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <!-- Narrow: drum pads move under the controls -->
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DrumPanel.(Grid.Column)" Value="0" />
+                        <Setter Target="DrumPanel.(Grid.Row)" Value="1" />
+                        <Setter Target="DrumPanel.HorizontalAlignment" Value="Left" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
         <!-- Control panel -->
-        <Grid Grid.Row="0" ColumnSpacing="24">
+        <Grid Grid.Row="0" ColumnSpacing="24" RowSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <StackPanel Grid.Column="0" Spacing="10">
+            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="10">
                 <!-- Instrument + banks -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Instrument" VerticalAlignment="Center" Width="70" Foreground="#C0C0C0" />
-                    <Button x:Name="BtnInstrument" MinWidth="220" Content="Piano" />
-                    <TextBlock Text="Banks (F1-F4, right-click to assign)" VerticalAlignment="Center" Foreground="#808080" Margin="12,0,0,0" />
-                    <Button x:Name="BtnBank0" Content="1" Tag="0" Width="40" />
-                    <Button x:Name="BtnBank1" Content="2" Tag="1" Width="40" />
-                    <Button x:Name="BtnBank2" Content="3" Tag="2" Width="40" />
-                    <Button x:Name="BtnBank3" Content="4" Tag="3" Width="40" />
-                </StackPanel>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Instrument" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Button x:Name="BtnInstrument" Grid.Column="1" HorizontalAlignment="Stretch" Content="Piano" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                                ToolTipService.ToolTip="Banks: F1-F4. Right-click to assign an instrument.">
+                        <Button x:Name="BtnBank0" Content="1" Tag="0" Width="40" />
+                        <Button x:Name="BtnBank1" Content="2" Tag="1" Width="40" />
+                        <Button x:Name="BtnBank2" Content="3" Tag="2" Width="40" />
+                        <Button x:Name="BtnBank3" Content="4" Tag="3" Width="40" />
+                    </StackPanel>
+                </Grid>
 
                 <!-- Beat -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Beat" VerticalAlignment="Center" Width="70" Foreground="#C0C0C0" />
-                    <Button x:Name="BtnBeat" MinWidth="220" Content="Disco" />
-                    <Button x:Name="BtnIntro" Content="Intro (F5)" Tag="0" />
-                    <Button x:Name="BtnFill1" Content="Fill 1 (F6)" Tag="1" />
-                    <Button x:Name="BtnFill2" Content="Fill 2 (F7)" Tag="2" />
-                    <Button x:Name="BtnEnd" Content="End (F8)" Tag="3" />
-                    <Button x:Name="BtnStop" Content="Stop (F9)" Tag="4" />
-                </StackPanel>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Beat" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Button x:Name="BtnBeat" Grid.Column="1" HorizontalAlignment="Stretch" Content="Disco" />
+                </Grid>
+                <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="BtnIntro" Grid.Column="0" HorizontalAlignment="Stretch" Content="Intro (F5)" Tag="0" />
+                    <Button x:Name="BtnFill1" Grid.Column="1" HorizontalAlignment="Stretch" Content="Fill 1 (F6)" Tag="1" />
+                    <Button x:Name="BtnFill2" Grid.Column="2" HorizontalAlignment="Stretch" Content="Fill 2 (F7)" Tag="2" />
+                    <Button x:Name="BtnEnd" Grid.Column="3" HorizontalAlignment="Stretch" Content="End (F8)" Tag="3" />
+                    <Button x:Name="BtnStop" Grid.Column="4" HorizontalAlignment="Stretch" Content="Stop (F9)" Tag="4" />
+                </Grid>
 
                 <!-- Sliders -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Tempo" VerticalAlignment="Center" Width="70" Foreground="#C0C0C0" />
-                    <Slider x:Name="SldTempo" Width="220" Minimum="0" Maximum="100" Value="0"
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Tempo" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Slider x:Name="SldTempo" Grid.Column="1" Minimum="0" Maximum="100" Value="0"
                             ToolTipService.ToolTip="Right = slower" />
-                    <TextBlock Text="Volume" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Slider x:Name="SldVolume" Width="220" Minimum="0" Maximum="127" Value="127" />
-                </StackPanel>
+                    <TextBlock Grid.Column="2" Text="Volume" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
+                    <Slider x:Name="SldVolume" Grid.Column="3" Minimum="0" Maximum="127" Value="127" />
+                </Grid>
 
                 <!-- Key + device -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Key" VerticalAlignment="Center" Width="70" Foreground="#C0C0C0" />
-                    <Button x:Name="BtnKey" Content="C" Width="60" />
-                    <TextBlock Text="Device" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Button x:Name="BtnDevice" MinWidth="320" Content="(none)" />
-                </StackPanel>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="60" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Key" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Button x:Name="BtnKey" Grid.Column="1" Content="C" HorizontalAlignment="Stretch" />
+                    <TextBlock Grid.Column="2" Text="Device" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
+                    <Button x:Name="BtnDevice" Grid.Column="3" HorizontalAlignment="Stretch" Content="(none)" />
+                </Grid>
             </StackPanel>
 
             <!-- Drum pads (numpad layout) -->
-            <StackPanel Grid.Column="1" Spacing="4">
+            <StackPanel x:Name="DrumPanel" Grid.Column="1" Grid.Row="0" Spacing="4">
                 <TextBlock Text="Drum pads (numpad, click to change sound)" Foreground="#808080" />
                 <Grid x:Name="DrumGrid" RowSpacing="4" ColumnSpacing="4">
                     <Grid.ColumnDefinitions>
@@ -77,9 +135,9 @@
             </StackPanel>
         </Grid>
 
-        <!-- Piano -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <Canvas x:Name="PianoCanvas" Height="200" HorizontalAlignment="Left" />
-        </ScrollViewer>
+        <!-- Piano: keys are laid out in code to fill this area -->
+        <Grid x:Name="PianoHost" Grid.Row="1" MinHeight="120">
+            <Canvas x:Name="PianoCanvas" HorizontalAlignment="Left" VerticalAlignment="Top" />
+        </Grid>
     </Grid>
 </Window>
