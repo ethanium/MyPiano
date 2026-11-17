@@ -18,6 +18,9 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
     private float[] _left = new float[1024];
     private float[] _right = new float[1024];
 
+    /// <summary>Delay, drive, tremolo and tone, applied after the synth (not available on Windows MIDI devices).</summary>
+    public EffectsChain Effects { get; } = new(SampleRate);
+
     public string Name { get; }
     public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(SampleRate, 2);
 
@@ -51,6 +54,7 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
 
         lock (_lock)
             _synth.Render(_left.AsSpan(0, frames), _right.AsSpan(0, frames));
+        Effects.Process(_left.AsSpan(0, frames), _right.AsSpan(0, frames));
 
         for (int i = 0; i < frames; i++)
         {
@@ -78,6 +82,11 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
             _synth.ProcessMidiMessage(channel, 0xB0, 32, 0);   // bank select LSB
             _synth.ProcessMidiMessage(channel, 0xC0, program, 0);
         }
+    }
+
+    public void Control(int channel, int controller, int value)
+    {
+        lock (_lock) _synth.ProcessMidiMessage(channel, 0xB0, controller, value);
     }
 
     public void Silence()

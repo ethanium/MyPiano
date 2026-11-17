@@ -8,6 +8,8 @@ public interface IMidiSink
     void NoteOn(int channel, int note, int velocity);
     void NoteOff(int channel, int note);
     void ChangeInstrument(int channel, int program);
+    /// <summary>Sends a MIDI control change (e.g. 91 = reverb send, 93 = chorus send).</summary>
+    void Control(int channel, int controller, int value);
     /// <summary>Stops any hanging notes.</summary>
     void Silence();
 }
@@ -100,6 +102,8 @@ public sealed class MidiOut : IMidiSink, IDisposable
         Send(0xB0, channel, 32, 0);  // bank select LSB
         Send(0xC0, channel, program);
     }
+
+    public void Control(int channel, int controller, int value) => Send(0xB0, channel, controller, value);
 
     // Closing and reopening the device cuts off any sounding notes (as the VB6 version did).
     public void Silence()

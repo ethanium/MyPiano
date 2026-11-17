@@ -7,6 +7,7 @@ A small piano, drum-pad and rhythm-box program for Windows that plays through MI
 - 12 percussion pads, each assignable to any of 32 drum sounds
 - 3 rhythm beats (Disco, Rock, 16 Beat) with intro, two fills, an ending and a tempo slider
 - Volume, transpose (key) and MIDI output device selection
+- Effects (C# version): reverb, chorus, delay, drive, tremolo and tone
 
 This repository holds **two versions of the same program**:
 
@@ -79,6 +80,23 @@ Two free General MIDI SoundFonts are included, as compressed `.sf3` files:
 
 `.sf3` files take a second or two to decode at startup. Licenses are in [`MyPianoCSharp/SoundFonts/`](MyPianoCSharp/SoundFonts).
 
+### Effects
+
+Six sliders shape the sound. Their settings are saved in `config.json`.
+
+| Slider | What it does | Works on |
+|---|---|---|
+| Reverb | Room/hall ambience (MIDI CC 91) | Windows MIDI devices and SoundFont synth |
+| Chorus | Thicker, shimmering sound (MIDI CC 93) | Windows MIDI devices and SoundFont synth |
+| Delay | Echo that bounces between left and right | SoundFont synth only |
+| Drive | Soft-clip distortion | SoundFont synth only |
+| Tremolo | Volume wobble (5 Hz) | SoundFont synth only |
+| Tone | Left = more bass, middle = flat, right = more treble | SoundFont synth only |
+
+Reverb and chorus are standard MIDI controls, so a Windows device only responds if its synth supports them.
+The other four are built into the app's own audio output, so their sliders are greyed out while a Windows device is selected.
+The code is in [`MyPianoCSharp/Effects.cs`](MyPianoCSharp/Effects.cs).
+
 ### Compressing SoundFonts (`.sf2` to `.sf3`)
 
 GitHub rejects files over 100 MB and the original `FluidR3_GM.sf2` is about 148 MB, so it can't be pushed as is; the `.sf3` version (23 MB) can.
@@ -90,6 +108,15 @@ dotnet run --project tools\Sf3Tool -c Release -- test in.sf2 out.sf3     # rende
 ```
 
 The tool encodes with libvorbis through [ffmpeg](https://ffmpeg.org/), which must be on your `PATH` (or set the `FFMPEG` environment variable to its location).
+
+## Roadmap
+
+Planned next, in order (details in [docs/ROADMAP.md](docs/ROADMAP.md)):
+
+1. **Performance controls:** sustain pedal, pitch bend, modulation wheel, octave shift, panic button, velocity options, portamento.
+2. **MIDI hardware:** MIDI input from a USB keyboard or controller, and MIDI learn for the sliders.
+3. **Layering and mixing:** split and layer instruments, per-channel volume and pan, arpeggiator and chord mode.
+4. **Recording:** record and play back performances, save and play `.mid` files.
 
 ## VB6 version
 

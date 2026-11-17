@@ -296,6 +296,20 @@ public sealed partial class MainWindow : Window
         SldTempo.ValueChanged += (_, _) => UpdateBeatInterval();
         SldVolume.ValueChanged += (_, e) => _volume = (int)e.NewValue;
 
+        SldReverb.Value = _settings.Reverb;
+        SldChorus.Value = _settings.Chorus;
+        SldReverb.ValueChanged += (_, e) => { _settings.Reverb = (int)e.NewValue; ApplyEffects(); };
+        SldChorus.ValueChanged += (_, e) => { _settings.Chorus = (int)e.NewValue; ApplyEffects(); };
+
+        SldDelay.Value = _settings.Delay;
+        SldDrive.Value = _settings.Drive;
+        SldTremolo.Value = _settings.Tremolo;
+        SldTone.Value = _settings.Tone;
+        SldDelay.ValueChanged += (_, e) => { _settings.Delay = (int)e.NewValue; ApplyEffects(); };
+        SldDrive.ValueChanged += (_, e) => { _settings.Drive = (int)e.NewValue; ApplyEffects(); };
+        SldTremolo.ValueChanged += (_, e) => { _settings.Tremolo = (int)e.NewValue; ApplyEffects(); };
+        SldTone.ValueChanged += (_, e) => { _settings.Tone = (int)e.NewValue; ApplyEffects(); };
+
         BtnKey.Click += (_, _) =>
         {
             var flyout = new MenuFlyout();
@@ -309,6 +323,7 @@ public sealed partial class MainWindow : Window
                     BtnKey.Content = NoteNames[index];
                     ReleaseAll();
                     _midi.Silence();   // the original reopened the device to cut off hanging notes
+                    ApplyEffects();    // reopening a hardware device resets its controllers
                 };
                 flyout.Items.Add(item);
             }
@@ -454,7 +469,29 @@ public sealed partial class MainWindow : Window
     {
         _instrSelect = index;
         _midi.ChangeInstrument(0, index);
+        ApplyEffects();   // also covers a freshly opened device or synth
         BtnInstrument.Content = _instruments[index];
+    }
+
+    /// <summary>Sends the reverb (CC 91) and chorus (CC 93) levels to the piano and drum channels.</summary>
+    private void ApplyEffects()
+    {
+        foreach (int ch in new[] { 0, 9 })
+        {
+            _midi.Control(ch, 91, _settings.Reverb);
+            _midi.Control(ch, 93, _settings.Chorus);
+        }
+
+        // Delay, drive, tremolo and tone only exist on the built-in synth.
+        bool synth = _midi is SoundFontSynth;
+        foreach (var s in new[] { SldDelay, SldDrive, SldTremolo, SldTone }) s.IsEnabled = synth;
+        if (_midi is SoundFontSynth sf)
+        {
+            sf.Effects.Delay = _settings.Delay;
+            sf.Effects.Drive = _settings.Drive;
+            sf.Effects.Tremolo = _settings.Tremolo;
+            sf.Effects.Tone = _settings.Tone;
+        }
     }
 
     private void SetKey(int i, bool down)

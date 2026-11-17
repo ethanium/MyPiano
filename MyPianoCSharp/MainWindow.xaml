@@ -101,6 +101,50 @@
                     <Slider x:Name="SldVolume" Grid.Column="3" Minimum="0" Maximum="127" Value="127" />
                 </Grid>
 
+                <!-- Effects -->
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Reverb" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Slider x:Name="SldReverb" Grid.Column="1" Minimum="0" Maximum="127" Value="40" />
+                    <TextBlock Grid.Column="2" Text="Chorus" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
+                    <Slider x:Name="SldChorus" Grid.Column="3" Minimum="0" Maximum="127" Value="0" />
+                </Grid>
+
+                <!-- Synth-only effects -->
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Delay" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Slider x:Name="SldDelay" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
+                            ToolTipService.ToolTip="Echo (SoundFont output only)" />
+                    <TextBlock Grid.Column="2" Text="Drive" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
+                    <Slider x:Name="SldDrive" Grid.Column="3" Minimum="0" Maximum="127" Value="0"
+                            ToolTipService.ToolTip="Distortion (SoundFont output only)" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="80" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Tremolo" VerticalAlignment="Center" Foreground="#C0C0C0" />
+                    <Slider x:Name="SldTremolo" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
+                            ToolTipService.ToolTip="Volume wobble (SoundFont output only)" />
+                    <TextBlock Grid.Column="2" Text="Tone" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
+                    <Slider x:Name="SldTone" Grid.Column="3" Minimum="0" Maximum="127" Value="64"
+                            ToolTipService.ToolTip="Left = bass, right = treble (SoundFont output only)" />
+                </Grid>
+
                 <!-- Key + device -->
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
