@@ -15,6 +15,7 @@ This repository holds **two versions of the same program**:
 |---|---|
 | [`MyPiano/`](MyPiano) | The original **Visual Basic 6** project (uses the Windows `winmm` MIDI API) |
 | [`MyPianoCSharp/`](MyPianoCSharp) | A **C# / .NET 8 / WinUI 3** port with a resizable UI and an optional built-in SoundFont synthesizer |
+| [`MyPiano.Avalonia/`](MyPiano.Avalonia) | The same C# app rebuilt on **Avalonia UI** (cross-platform XAML) |
 | [`tools/Sf3Tool/`](tools/Sf3Tool) | Command-line tool that compresses `.sf2` SoundFonts to `.sf3` |
 
 ## Controls
@@ -60,6 +61,19 @@ MyPianoCSharp\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\MyPianoCSharp.exe
 ```
 
 Or open `MyPianoCSharp\MyPianoCSharp.slnx` in Visual Studio and choose the **x64** platform (x86 and ARM64 work too).
+
+## Avalonia version
+
+[`MyPiano.Avalonia/`](MyPiano.Avalonia) is the same app with its UI layer rebuilt on [Avalonia](https://avaloniaui.net/), so it is not tied to WinUI 3 or the Windows App SDK.
+All of the audio, SoundFont, effects and settings code is shared unchanged; only the window, XAML and input handling differ.
+
+```powershell
+dotnet build MyPiano.Avalonia\MyPiano.Avalonia.csproj
+MyPiano.Avalonia\bin\Debug\net8.0\MyMidi.exe
+```
+
+The window, controls and keyboard shortcuts are the same as the WinUI version, including the square drum pads and the piano key proportions.
+Audio output still uses NAudio's WASAPI backend, so sound output remains Windows-only for now; the UI itself is cross-platform.
 
 ### Sound: Windows synth or SoundFont
 

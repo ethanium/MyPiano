@@ -85,15 +85,15 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="BtnIntro" Grid.Column="0" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
-                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Intro" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F5" />
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Intro" HorizontalAlignment="Stretch" Tag="0" ToolTipService.ToolTip="F5" />
                                 <Button x:Name="BtnFill1" Grid.Column="1" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
-                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Fill 1" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F6" />
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Fill 1" HorizontalAlignment="Stretch" Tag="1" ToolTipService.ToolTip="F6" />
                                 <Button x:Name="BtnFill2" Grid.Column="2" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
-                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Fill 2" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F7" />
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Fill 2" HorizontalAlignment="Stretch" Tag="2" ToolTipService.ToolTip="F7" />
                                 <Button x:Name="BtnEnd" Grid.Column="3" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
-                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="End" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F8" />
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="End" HorizontalAlignment="Stretch" Tag="3" ToolTipService.ToolTip="F8" />
                                 <Button x:Name="BtnStop" Grid.Column="4" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
-                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Stop" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F9" />
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Stop" HorizontalAlignment="Stretch" Tag="4" ToolTipService.ToolTip="F9" />
                             </Grid>
                         </StackPanel>
 
