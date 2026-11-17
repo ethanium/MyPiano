@@ -38,6 +38,7 @@ public sealed partial class MainWindow : Window
 
     private readonly bool[] _held = new bool[256];
     private readonly Border[] _keyShapes = new Border[PianoKeys.Length];
+    private readonly TextBlock[] _noteLabels = new TextBlock[PianoKeys.Length];
     private readonly Border[] _drumPads = new Border[12];
     private readonly int[] _whitesBefore = new int[PianoKeys.Length];
     private int _whiteCount;
@@ -65,20 +66,38 @@ public sealed partial class MainWindow : Window
         return brush;
     }
 
+    /// <summary>Three-stop vertical gradient (top, middle, bottom) for cylindrical shading.</summary>
+    private static LinearGradientBrush Grad3(byte r1, byte g1, byte b1, byte r2, byte g2, byte b2, byte r3, byte g3, byte b3)
+    {
+        var brush = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+        brush.GradientStops.Add(new GradientStop { Color = Color.FromArgb(255, r1, g1, b1), Offset = 0 });
+        brush.GradientStops.Add(new GradientStop { Color = Color.FromArgb(255, r2, g2, b2), Offset = 0.55 });
+        brush.GradientStops.Add(new GradientStop { Color = Color.FromArgb(255, r3, g3, b3), Offset = 1 });
+        return brush;
+    }
+
     private static readonly SolidColorBrush Active = new(Colors.Gold);
 
-    // Piano key states
-    private static readonly LinearGradientBrush WhiteIdle = Grad(0xFF, 0xFF, 0xFF, 0xE2, 0xE2, 0xE9);
-    private static readonly LinearGradientBrush BlackIdle = Grad(0x3A, 0x3A, 0x40, 0x0A, 0x0A, 0x0C);
-    private static readonly LinearGradientBrush WhiteDown = Grad(0xFF, 0xE0, 0x82, 0xFF, 0xB3, 0x00);
-    private static readonly LinearGradientBrush BlackDown = Grad(0xFF, 0xCA, 0x28, 0xFF, 0x8F, 0x00);
-    private static readonly SolidColorBrush KeyBorderWhite = Brush(0xB8, 0xB8, 0xC0);
+    // Piano key states (cylindrical shading: bright top -> body -> darker front lip)
+    private static readonly LinearGradientBrush WhiteIdle = Grad3(0xFF, 0xFF, 0xFF, 0xF6, 0xF6, 0xF9, 0xD8, 0xD8, 0xDF);
+    private static readonly LinearGradientBrush BlackIdle = Grad3(0x55, 0x55, 0x5C, 0x22, 0x22, 0x26, 0x08, 0x08, 0x0A);
+    private static readonly LinearGradientBrush WhiteDown = Grad3(0xFF, 0xE6, 0xA0, 0xFF, 0xC2, 0x4D, 0xF0, 0x9A, 0x00);
+    private static readonly LinearGradientBrush BlackDown = Grad3(0xFF, 0xD0, 0x50, 0xFF, 0xB0, 0x20, 0xE0, 0x7A, 0x00);
+    private static readonly SolidColorBrush KeyBorderWhite = Brush(0xA8, 0xA8, 0xB2);
     private static readonly SolidColorBrush KeyBorderBlack = Brush(0x00, 0x00, 0x00);
+    private static readonly SolidColorBrush WhiteLip = Brush(0xC4, 0xC4, 0xCC);
+    private static readonly SolidColorBrush BlackLip = Brush(0x00, 0x00, 0x00);
 
     // Drum pad states
     private static readonly SolidColorBrush PadIdleBg = Brush(0x24, 0x24, 0x2A);
     private static readonly SolidColorBrush PadIdleFg = Brush(0xC8, 0xC8, 0xD0);
     private static readonly SolidColorBrush PadDownFg = Brush(0x14, 0x14, 0x14);
+
+    // Beveled hardware-button gradients
+    private static readonly LinearGradientBrush BtnNormal = Grad3(0x34, 0x34, 0x3B, 0x2A, 0x2A, 0x30, 0x20, 0x20, 0x25);
+    private static readonly LinearGradientBrush BtnHover = Grad3(0x40, 0x40, 0x48, 0x34, 0x34, 0x3B, 0x28, 0x28, 0x2E);
+    private static readonly LinearGradientBrush BtnPressed = Grad3(0x1C, 0x1C, 0x21, 0x22, 0x22, 0x27, 0x28, 0x28, 0x2D);
+    private static readonly SolidColorBrush BtnBorder = Brush(0x3C, 0x3C, 0x44);
 
     public MainWindow()
     {
@@ -128,7 +147,12 @@ public sealed partial class MainWindow : Window
 
         Root.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnKeyDown), true);
         Root.AddHandler(UIElement.KeyUpEvent, new KeyEventHandler(OnKeyUp), true);
-        Root.Loaded += (_, _) => Root.Focus(FocusState.Programmatic);
+        Root.Loaded += (_, _) =>
+        {
+            Root.Focus(FocusState.Programmatic);
+            // First layout pass: SizeChanged may have fired before arrange completed.
+            LayoutPiano(PianoHost.ActualWidth, PianoHost.ActualHeight);
+        };
 
         Activated += (_, e) =>
         {
@@ -192,23 +216,57 @@ public sealed partial class MainWindow : Window
             bool black = BlackSemitones.Contains(i % 12);
             int index = i;
             _whitesBefore[i] = whiteCount;
+
+            // Front lip: a thin darker strip along the bottom edge to fake depth.
+            var lip = new Border
+            {
+                VerticalAlignment = VerticalAlignment.Bottom,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Height = 8,
+                Background = black ? BlackLip : WhiteLip,
+                CornerRadius = new CornerRadius(0, 0, black ? 4 : 5, black ? 4 : 5),
+                IsHitTestVisible = false,
+            };
+
+            var keyLabel = new TextBlock
+            {
+                Text = KeyLabel(PianoKeys[i]),
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(black ? Colors.White : Colors.Black),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, 10),
+                IsHitTestVisible = false,
+            };
+
+            // Note-name label (e.g. C4, F#3) at the top of the key; updated on key/octave change.
+            var noteLabel = new TextBlock
+            {
+                Text = NoteNameFor(i),
+                FontSize = 11,
+                FontWeight = Microsoft.UI.Text.FontWeights.Normal,
+                Foreground = new SolidColorBrush(black ? Color.FromArgb(255, 0xB0, 0xB0, 0xB8) : Color.FromArgb(255, 0x70, 0x70, 0x78)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 6, 0, 0),
+                IsHitTestVisible = false,
+            };
+            _noteLabels[i] = noteLabel;
+
+            // Host grid so the lip and labels can stack inside the key border.
+            var content = new Grid();
+            content.Children.Add(noteLabel);
+            content.Children.Add(keyLabel);
+            content.Children.Add(lip);
+
             var shape = new Border
             {
                 Background = black ? BlackIdle : WhiteIdle,
                 BorderBrush = black ? KeyBorderBlack : KeyBorderWhite,
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(0, 0, black ? 5 : 6, black ? 5 : 6),
-                Child = new TextBlock
-                {
-                    Text = KeyLabel(PianoKeys[i]),
-                    FontSize = 14,
-                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                    Foreground = new SolidColorBrush(black ? Colors.White : Colors.Black),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Bottom,
-                    Margin = new Thickness(0, 0, 0, 8),
-                    IsHitTestVisible = false,
-                },
+                Child = content,
             };
             shape.PointerPressed += (s, e) => { ((UIElement)s).CapturePointer(e.Pointer); SetKey(index, true); };
             shape.PointerReleased += (s, e) => { ((UIElement)s).ReleasePointerCapture(e.Pointer); SetKey(index, false); };
@@ -232,16 +290,20 @@ public sealed partial class MainWindow : Window
         PianoHost.SizeChanged += (_, e) => LayoutPiano(e.NewSize.Width, e.NewSize.Height);
     }
 
-    /// <summary>Scales the keyboard to fill the available space.</summary>
+    /// <summary>Scales the keyboard to fill the available space, keeping realistic key proportions.</summary>
     private void LayoutPiano(double width, double height)
     {
         if (_whiteCount == 0 || width <= 0 || height <= 0) return;
 
         double whiteW = width / _whiteCount;
-        double whiteH = Math.Max(100, height);
-        double blackW = whiteW * 0.62;
-        double blackH = whiteH * 0.6;
-        double font = Math.Clamp(whiteW * 0.32, 9, 18);
+        // Real piano proportions: white key 23.5 x 150 mm (1:6.4), black key 13.7 x 90 mm.
+        // Fill available height but clamp so keys never look absurdly long on tall windows.
+        double whiteH = Math.Clamp(height, 90, whiteW * 6.4);
+        double blackW = whiteW * 0.58;   // 13.7 / 23.5
+        double blackH = whiteH * 0.60;   // 90 / 150
+        double lipH = Math.Clamp(whiteH * 0.05, 4, 9);
+        double font = Math.Clamp(whiteW * 0.34, 8, 18);
+        double noteFont = Math.Clamp(whiteW * 0.22, 7, 13);
 
         for (int i = 0; i < _keyShapes.Length; i++)
         {
@@ -250,7 +312,21 @@ public sealed partial class MainWindow : Window
             shape.Width = black ? blackW : whiteW;
             shape.Height = black ? blackH : whiteH;
             Canvas.SetLeft(shape, black ? _whitesBefore[i] * whiteW - blackW / 2 : _whitesBefore[i] * whiteW);
-            if (shape.Child is TextBlock label) label.FontSize = font;
+
+            if (_noteLabels[i] is { } noteLabel) noteLabel.FontSize = noteFont;
+
+            if (shape.Child is Grid content)
+            {
+                foreach (var child in content.Children)
+                {
+                    if (child is TextBlock label && !ReferenceEquals(label, _noteLabels[i])) label.FontSize = font;
+                    else if (child is Border lip)
+                    {
+                        lip.Height = lipH;
+                        lip.CornerRadius = new CornerRadius(0, 0, black ? 4 : 5, black ? 4 : 5);
+                    }
+                }
+            }
         }
         PianoCanvas.Width = width;
         PianoCanvas.Height = whiteH;
@@ -263,8 +339,11 @@ public sealed partial class MainWindow : Window
             int index = i;
             var pad = new Border
             {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch,
+                // Initial square; recomputed on size changes in LayoutDrumPads.
+                Width = 64,
+                Height = 64,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
                 CornerRadius = new CornerRadius(9),
                 Background = PadIdleBg,
                 BorderBrush = Brush(0x3A, 0x3A, 0x46),
@@ -291,6 +370,32 @@ public sealed partial class MainWindow : Window
             _drumPads[i] = pad;
             DrumGrid.Children.Add(pad);
             UpdatePadTooltip(i);
+        }
+
+        // Keep pads square as the panel resizes.
+        DrumPanel.SizeChanged += (_, e) => LayoutDrumPads(e.NewSize.Width, e.NewSize.Height);
+    }
+
+    /// <summary>Sizes the drum pads as squares that fit the panel (3 columns x 4 rows).</summary>
+    private void LayoutDrumPads(double panelWidth, double panelHeight)
+    {
+        const double gap = 6;          // RowSpacing/ColumnSpacing
+        const double padBorder = 28;   // DrumPanel Padding (14) * 2
+        const double labelSpace = 30;  // section label + spacing above the grid
+
+        double availW = panelWidth - padBorder - gap * 2;      // 3 columns, 2 gaps
+        double availH = panelHeight - padBorder - labelSpace - gap * 3; // 4 rows, 3 gaps
+        if (availW <= 0 || availH <= 0) return;
+
+        double byWidth = availW / 3;
+        double byHeight = availH / 4;
+        double size = Math.Clamp(Math.Min(byWidth, byHeight), 36, 120);
+
+        foreach (var pad in _drumPads)
+        {
+            pad.Width = size;
+            pad.Height = size;
+            if (pad.Child is TextBlock t) t.FontSize = Math.Clamp(size * 0.3, 11, 22);
         }
     }
 
@@ -373,6 +478,7 @@ public sealed partial class MainWindow : Window
                     BtnKey.Content = NoteNames[index];
                     ReleaseAll();
                     _midi.Silence();   // the original reopened the device to cut off hanging notes
+                    RefreshNoteLabels();
                     ApplyEffects();    // reopening a hardware device resets its controllers
                 };
                 flyout.Items.Add(item);
@@ -413,6 +519,33 @@ public sealed partial class MainWindow : Window
         };
 
         _beatTimer.Tick += (_, _) => BeatTick();
+
+        // Beveled hardware look for every button.
+        foreach (var b in new Button[]
+                 {
+                     BtnDevice, BtnInstrument, BtnBank0, BtnBank1, BtnBank2, BtnBank3,
+                     BtnBeat, BtnIntro, BtnFill1, BtnFill2, BtnEnd, BtnStop,
+                     BtnKey, BtnOctDown, BtnOctUp,
+                 })
+        {
+            StyleBevel(b);
+        }
+    }
+
+    /// <summary>Applies a beveled gradient + hover/press feedback to a button.</summary>
+    private static void StyleBevel(Button b)
+    {
+        b.Background = BtnNormal;
+        b.BorderBrush = BtnBorder;
+        b.BorderThickness = new Thickness(1);
+        b.CornerRadius = new CornerRadius(6);
+        b.Foreground = Brush(0xE6, 0xE6, 0xEA);
+        b.Padding = new Thickness(10, 6, 10, 6);
+
+        b.PointerEntered += (_, _) => { if (b.IsEnabled) b.Background = BtnHover; };
+        b.PointerExited += (_, _) => { if (b.IsEnabled) b.Background = BtnNormal; };
+        b.PointerPressed += (_, _) => { if (b.IsEnabled) b.Background = BtnPressed; };
+        b.PointerReleased += (_, _) => { if (b.IsEnabled) b.Background = BtnHover; };
     }
 
     // ---------- menus ----------
@@ -546,6 +679,20 @@ public sealed partial class MainWindow : Window
 
     private int NoteFor(int i) => i + _baseKey + 48 + _octave * 12;
 
+    /// <summary>Scientific pitch name (e.g. C4, F#3) for key index i.</summary>
+    private string NoteNameFor(int i)
+    {
+        int note = NoteFor(i);
+        return NoteNames[note % 12] + (note / 12 - 1);
+    }
+
+    /// <summary>Refreshes every key's note-name label after a key or octave change.</summary>
+    private void RefreshNoteLabels()
+    {
+        for (int i = 0; i < _noteLabels.Length; i++)
+            if (_noteLabels[i] is not null) _noteLabels[i].Text = NoteNameFor(i);
+    }
+
     private void SetKey(int i, bool down)
     {
         bool black = BlackSemitones.Contains(i % 12);
@@ -589,6 +736,7 @@ public sealed partial class MainWindow : Window
         _midi.Silence();
         _octave = Math.Clamp(_octave + delta, -2, 2);
         TxtOct.Text = _octave > 0 ? "+" + _octave : _octave.ToString();
+        RefreshNoteLabels();
         ApplyEffects();
     }
 
@@ -641,7 +789,7 @@ public sealed partial class MainWindow : Window
         _held[k] = false;
 
         if (k >= (int)VirtualKey.F1 && k <= (int)VirtualKey.F4)
-            _bankButtons[k - (int)VirtualKey.F1].ClearValue(Control.BackgroundProperty);
+            _bankButtons[k - (int)VirtualKey.F1].Background = BtnNormal;
 
         int p = Array.IndexOf(PianoKeys, k);
         if (p >= 0) SetKey(p, false);
@@ -714,7 +862,7 @@ public sealed partial class MainWindow : Window
         if (Content?.XamlRoot is null) return;
         await new ContentDialog
         {
-            Title = "MyPiano",
+            Title = "My MIDI",
             Content = message,
             CloseButtonText = "OK",
             XamlRoot = Content.XamlRoot,
