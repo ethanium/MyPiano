@@ -761,7 +761,14 @@ public sealed partial class MainWindow : Window
         if (k < 0 || k > 255 || _held[k]) return;   // ignore auto-repeat
 
         bool used = false;
-        if (k >= (int)VirtualKey.F1 && k <= (int)VirtualKey.F4)
+        if (k == (int)VirtualKey.PageUp || k == (int)VirtualKey.PageDown)
+        {
+            int dir = k == (int)VirtualKey.PageDown ? 1 : -1;
+            int next = (_instrSelect + dir + _instruments.Count) % _instruments.Count;
+            SelectInstrument(next);
+            used = true;
+        }
+        else if (k >= (int)VirtualKey.F1 && k <= (int)VirtualKey.F4)
         {
             int bank = k - (int)VirtualKey.F1;
             SelectInstrument(_settings.Banks[bank]);
