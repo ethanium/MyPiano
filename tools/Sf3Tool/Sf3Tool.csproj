@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Sf3Tool</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared with the app so the tool and the player agree on the file format. -->
+    <Compile Include="..\..\MyPianoCSharp\SfRiff.cs" Link="SfRiff.cs" />
+    <Compile Include="..\..\MyPianoCSharp\Sf3Loader.cs" Link="Sf3Loader.cs" />
+    <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
+    <PackageReference Include="MeltySynth" Version="2.4.1" />
+  </ItemGroup>
+
+</Project>

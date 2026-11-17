@@ -23,6 +23,7 @@
   <ItemGroup>
     <PackageReference Include="MeltySynth" Version="2.4.1" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
   </ItemGroup>

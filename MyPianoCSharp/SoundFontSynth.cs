@@ -29,7 +29,10 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
             MaximumPolyphony = 128,
             EnableReverbAndChorus = true,
         };
-        _synth = new Synthesizer(new SoundFont(soundFontPath), settings);
+        // .sf3 (compressed) files are decoded to PCM in memory first; .sf2 files are read directly.
+        using (var stream = Sf3Loader.Open(soundFontPath))
+            _synth = new Synthesizer(new SoundFont(stream), settings);
+        GC.Collect();   // drop the temporary decode buffers (several times the size of the file)
 
         _output = new WasapiOut(AudioClientShareMode.Shared, true, 40);   // 40 ms latency
         _output.Init(this);

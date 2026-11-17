@@ -73,9 +73,15 @@ public sealed partial class MainWindow : Window
         _midi = _hardware;
         if (string.IsNullOrEmpty(_settings.SoundFontPath) || !File.Exists(_settings.SoundFontPath))
         {
-            // First run (or file moved): use the first .sf2 found in SoundFonts\ next to the exe.
+            // First run (or file moved): use a SoundFont found in SoundFonts\ next to the exe.
+            // Prefer .sf2 (loads fastest) over .sf3 (compressed, decoded at startup).
             var dir = Path.Combine(AppContext.BaseDirectory, "SoundFonts");
-            var found = Directory.Exists(dir) ? Directory.EnumerateFiles(dir, "*.sf2").FirstOrDefault() : null;
+            var found = Directory.Exists(dir)
+                ? Directory.EnumerateFiles(dir)
+                    .Where(f => f.EndsWith(".sf2", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".sf3", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(f => f.EndsWith(".sf3", StringComparison.OrdinalIgnoreCase)).ThenBy(f => f)
+                    .FirstOrDefault()
+                : null;
             if (found is not null)
             {
                 _settings.SoundFontPath = found;
@@ -334,7 +340,7 @@ public sealed partial class MainWindow : Window
                 };
                 flyout.Items.Add(current);
             }
-            var browse = new MenuFlyoutItem { Text = "Load SoundFont (.sf2)…" };
+            var browse = new MenuFlyoutItem { Text = "Load SoundFont (.sf2 / .sf3)…" };
             browse.Click += async (_, _) => await PickSoundFontAsync();
             flyout.Items.Add(browse);
 
@@ -438,6 +444,7 @@ public sealed partial class MainWindow : Window
         var picker = new Windows.Storage.Pickers.FileOpenPicker();
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
         picker.FileTypeFilter.Add(".sf2");
+        picker.FileTypeFilter.Add(".sf3");
         var file = await picker.PickSingleFileAsync();
         if (file is null) return;
         if (TryUseSoundFont(file.Path)) SelectInstrument(_instrSelect);

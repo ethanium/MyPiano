@@ -1,6 +1,104 @@
-Title: MyPiano
-Description: A simple piano application using windows Midi API. Include 3 octave notes, 4 instruments bank, 3 rhythm beats, 12 percussion keys. Great code to download!
-This file came from Planet-Source-Code.com...the home millions of lines of source code
-You can view comments on this code/and or vote on it at: http://www.Planet-Source-Code.com/vb/scripts/ShowCode.asp?txtCodeId=43153&lngWId=1
+# MyPiano
 
-The author may have retained certain copyrights to this code...please observe their request and the law by reviewing all copyright conditions at the above URL.
+A small piano, drum-pad and rhythm-box program for Windows that plays through MIDI.
+
+- 3-octave piano played from the computer keyboard (or the mouse)
+- 128 General MIDI instruments, with 4 quick-select instrument banks
+- 12 percussion pads, each assignable to any of 32 drum sounds
+- 3 rhythm beats (Disco, Rock, 16 Beat) with intro, two fills, an ending and a tempo slider
+- Volume, transpose (key) and MIDI output device selection
+
+This repository holds **two versions of the same program**:
+
+| Folder | What it is |
+|---|---|
+| [`MyPiano/`](MyPiano) | The original **Visual Basic 6** project (uses the Windows `winmm` MIDI API) |
+| [`MyPianoCSharp/`](MyPianoCSharp) | A **C# / .NET 8 / WinUI 3** port with a resizable UI and an optional built-in SoundFont synthesizer |
+| [`tools/Sf3Tool/`](tools/Sf3Tool) | Command-line tool that compresses `.sf2` SoundFonts to `.sf3` |
+
+## Controls
+
+Both versions use the same keys.
+
+**Piano** (the labels are drawn on the keys in the C# version)
+
+```
+ top row:     2 3 4   6 7   9 0 -        (black keys)
+             Q W E R T Y U I O P [       (white keys)
+
+ bottom row:  S D   G H J   L ;          (black keys)
+             Z X C V B N M , . /         (white keys)
+```
+
+The two rows are one continuous 3-octave keyboard, not two separate ones. It starts at C on `Z`, the bottom row runs up to E on `/`, and the top row carries on from F on `Q` up to B on `[`.
+In order, lowest note first: `Z S X D C V G B H N J M , L . ; /` then `Q 2 W 3 E 4 R T 6 Y 7 U I 9 O 0 P - [`.
+
+**Drum pads**: the numpad, with Num Lock on: `/ * -`, `7 8 9`, `4 5 6`, `1 2 3`.
+Click a pad to choose which drum sound it plays.
+
+| Key | Action |
+|---|---|
+| `F1`-`F4` | Select instrument bank 1-4 (right-click a bank to assign the instrument you pick) |
+| `F5` | Beat intro |
+| `F6` / `F7` | Beat fill 1 / fill 2 |
+| `F8` | Beat ending |
+| `F9` | Stop the beat |
+
+Picking a beat from the menu starts it with the intro. Fills and the ending are queued and begin when the section that is playing finishes, so they stay in time.
+
+## C# version (WinUI 3)
+
+**Requirements:** Windows 10 version 1809 or later, and the [.NET 8 SDK](https://dotnet.microsoft.com/download).
+The Windows App SDK is bundled with the app, so no extra runtime is needed.
+
+**Build and run**
+
+```powershell
+dotnet build MyPianoCSharp\MyPianoCSharp.csproj -p:Platform=x64
+MyPianoCSharp\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\MyPianoCSharp.exe
+```
+
+Or open `MyPianoCSharp\MyPianoCSharp.slnx` in Visual Studio and choose the **x64** platform (x86 and ARM64 work too).
+
+### Sound: Windows synth or SoundFont
+
+By default MIDI goes to a Windows MIDI device. Device 0 is normally the *Microsoft GS Wavetable Synth*, which is small and sounds dated.
+For much better sound the app has a built-in synthesizer that plays a General MIDI **SoundFont**:
+
+1. Put an `.sf2` or `.sf3` file in `MyPianoCSharp/SoundFonts/` and the app will pick it up on first run, **or**
+2. Click **Device**, then **Load SoundFont (.sf2 / .sf3)…** and choose a file.
+
+The choice is remembered in `config.json` next to the executable. Pick a normal Windows device from the same **Device** menu to switch back.
+
+Two free General MIDI SoundFonts are included, as compressed `.sf3` files:
+
+| File | Size | Notes |
+|---|---|---|
+| `FluidR3_GM.sf3` | 23 MB | Fuller sound; uses roughly 600 MB of memory when loaded |
+| `GeneralUser-GS.sf3` | 8 MB | Lighter; roughly 250 MB of memory |
+
+`.sf3` files take a second or two to decode at startup. Licenses are in [`MyPianoCSharp/SoundFonts/`](MyPianoCSharp/SoundFonts).
+
+### Compressing SoundFonts (`.sf2` to `.sf3`)
+
+GitHub rejects files over 100 MB and the original `FluidR3_GM.sf2` is about 148 MB, so it can't be pushed as is; the `.sf3` version (23 MB) can.
+`tools/Sf3Tool` shrinks a SoundFont to about 16-26% of its size using Ogg Vorbis (lossy, quality 0.5 by default):
+
+```powershell
+dotnet run --project tools\Sf3Tool -c Release -- compress in.sf2 out.sf3 [quality 0.0-1.0]
+dotnet run --project tools\Sf3Tool -c Release -- test in.sf2 out.sf3     # renders notes from both and compares
+```
+
+The tool encodes with libvorbis through [ffmpeg](https://ffmpeg.org/), which must be on your `PATH` (or set the `FFMPEG` environment variable to its location).
+
+## VB6 version
+
+Open `MyPiano/MyPiano.vbp` in the Visual Basic 6 IDE and run it. It needs `instrument.txt` and writes its settings to `config.dat` in the same folder.
+Keep the `.frx` file with `frmPiano.frm`; it holds the form's binary resources.
+
+## Credits
+
+- The original program came from Planet-Source-Code.com: <http://www.Planet-Source-Code.com/vb/scripts/ShowCode.asp?txtCodeId=43153&lngWId=1>.
+  The author may have retained certain copyrights to this code. Please observe their request and the law by reviewing all copyright conditions at that URL.
+- SoundFonts: **FluidR3 GM** by Frank Wen and Toby Smithe (MIT License) and **GeneralUser GS** by S. Christian Collins (free to use, see its license).
+- C# libraries: [MeltySynth](https://github.com/sinshu/meltysynth) (SoundFont synthesizer), [NAudio](https://github.com/naudio/NAudio) (audio output), [StbVorbisSharp](https://github.com/StbSharp/StbVorbisSharp) (`.sf3` decoding), Windows App SDK (UI).
