@@ -4,184 +4,241 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="MyPiano">
 
-    <Grid x:Name="Root" Padding="16" RowSpacing="12" Background="#202020" IsTabStop="True">
+    <Grid x:Name="Root" Padding="20" RowSpacing="16" Background="#0E0E10" IsTabStop="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup>
-                <!-- Wide: controls on the left, drum pads on the right -->
-                <VisualState x:Name="Wide">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="900" />
-                    </VisualState.StateTriggers>
-                </VisualState>
-                <!-- Narrow: drum pads move under the controls -->
-                <VisualState x:Name="Narrow">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="0" />
-                    </VisualState.StateTriggers>
-                    <VisualState.Setters>
-                        <Setter Target="DrumPanel.(Grid.Column)" Value="0" />
-                        <Setter Target="DrumPanel.(Grid.Row)" Value="1" />
-                        <Setter Target="DrumPanel.HorizontalAlignment" Value="Left" />
-                    </VisualState.Setters>
-                </VisualState>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
-
-        <!-- Control panel -->
-        <Grid Grid.Row="0" ColumnSpacing="24" RowSpacing="12">
+        <!-- Header: title + output device -->
+        <Grid Grid.Row="0" ColumnSpacing="14">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                <Border Width="6" Height="36" CornerRadius="3" Background="#FFB300" VerticalAlignment="Center" />
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="MyPiano" FontSize="22" FontWeight="Bold" Foreground="#F2F2F5" />
+                    <TextBlock Text="MIDI CONTROLLER" FontSize="10" Foreground="#6E6E78" />
+                </StackPanel>
+            </StackPanel>
+            <Button x:Name="BtnDevice" Grid.Column="2"
+                    Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                    CornerRadius="6" Padding="10,6" FontSize="13"
+                    Content="(none)" MinWidth="220" VerticalAlignment="Center" />
+        </Grid>
 
-            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="10">
-                <!-- Instrument + banks -->
-                <Grid ColumnSpacing="8">
+        <!-- Control surface + drum pads -->
+        <Grid Grid.Row="1" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="520" />
+                <ColumnDefinition Width="240" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="#1A1A1E" BorderBrush="#2B2B32" BorderThickness="1"
+                    CornerRadius="12" Padding="16">
+                <Grid ColumnSpacing="22">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Instrument" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Button x:Name="BtnInstrument" Grid.Column="1" HorizontalAlignment="Stretch" Content="Piano" />
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
-                                ToolTipService.ToolTip="Banks: F1-F4. Right-click to assign an instrument.">
-                        <Button x:Name="BtnBank0" Content="1" Tag="0" Width="40" />
-                        <Button x:Name="BtnBank1" Content="2" Tag="1" Width="40" />
-                        <Button x:Name="BtnBank2" Content="3" Tag="2" Width="40" />
-                        <Button x:Name="BtnBank3" Content="4" Tag="3" Width="40" />
+
+                    <!-- Left column: sound / rhythm / tempo -->
+                    <StackPanel Grid.Column="0" Spacing="14">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="SOUND" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="BtnInstrument" Grid.Column="0"
+                                        Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13"
+                                        Content="Piano" HorizontalAlignment="Stretch" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                    <Button x:Name="BtnBank0" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,6" FontSize="13" Content="1" Width="40" ToolTipService.ToolTip="F1" />
+                                    <Button x:Name="BtnBank1" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,6" FontSize="13" Content="2" Width="40" ToolTipService.ToolTip="F2" />
+                                    <Button x:Name="BtnBank2" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,6" FontSize="13" Content="3" Width="40" ToolTipService.ToolTip="F3" />
+                                    <Button x:Name="BtnBank3" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,6" FontSize="13" Content="4" Width="40" ToolTipService.ToolTip="F4" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="RHYTHM" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78" />
+                            <Button x:Name="BtnBeat" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                    CornerRadius="6" Padding="10,6" FontSize="13" Content="Disco" HorizontalAlignment="Stretch" />
+                            <Grid ColumnSpacing="6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="BtnIntro" Grid.Column="0" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Intro" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F5" />
+                                <Button x:Name="BtnFill1" Grid.Column="1" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Fill 1" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F6" />
+                                <Button x:Name="BtnFill2" Grid.Column="2" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Fill 2" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F7" />
+                                <Button x:Name="BtnEnd" Grid.Column="3" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="End" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F8" />
+                                <Button x:Name="BtnStop" Grid.Column="4" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="Stop" HorizontalAlignment="Stretch" ToolTipService.ToolTip="F9" />
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="TEMPO" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78" />
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="36" />
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="SldTempo" Grid.Column="0" Minimum="0" Maximum="100" Value="0"
+                                        ToolTipService.ToolTip="Right = slower" />
+                                <TextBlock x:Name="TxtTempo" Grid.Column="1" Text="0" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Right column: effects / master / setup -->
+                    <StackPanel Grid.Column="1" Spacing="14">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="EFFECTS" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78" />
+                            <Grid ColumnSpacing="10" RowSpacing="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" MinWidth="80" />
+                                    <ColumnDefinition Width="36" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Reverb" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Slider x:Name="SldReverb" Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="127" Value="40" />
+                                <TextBlock x:Name="TxtReverb" Grid.Row="0" Grid.Column="2" Text="40" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Chorus" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Slider x:Name="SldChorus" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="127" Value="0" />
+                                <TextBlock x:Name="TxtChorus" Grid.Row="1" Grid.Column="2" Text="0" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Delay" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Slider x:Name="SldDelay" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
+                                        ToolTipService.ToolTip="Echo (SoundFont output only)" />
+                                <TextBlock x:Name="TxtDelay" Grid.Row="2" Grid.Column="2" Text="0" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Drive" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Slider x:Name="SldDrive" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
+                                        ToolTipService.ToolTip="Distortion (SoundFont output only)" />
+                                <TextBlock x:Name="TxtDrive" Grid.Row="3" Grid.Column="2" Text="0" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Tremolo" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Slider x:Name="SldTremolo" Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
+                                        ToolTipService.ToolTip="Volume wobble (SoundFont output only)" />
+                                <TextBlock x:Name="TxtTremolo" Grid.Row="4" Grid.Column="2" Text="0" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Tone" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Slider x:Name="SldTone" Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="127" Value="64"
+                                        ToolTipService.ToolTip="Left = bass, right = treble (SoundFont output only)" />
+                                <TextBlock x:Name="TxtTone" Grid.Row="5" Grid.Column="2" Text="64" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="MASTER" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78" />
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="36" />
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="SldVolume" Grid.Column="0" Minimum="0" Maximum="127" Value="127" />
+                                <TextBlock x:Name="TxtVolume" Grid.Column="1" Text="127" FontSize="12" Foreground="#FFB300"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" MinWidth="30" />
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="SETUP" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Key" Grid.Column="0" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" />
+                                <Button x:Name="BtnKey" Grid.Column="1" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,6" FontSize="13" Content="C" HorizontalAlignment="Stretch" />
+                                <TextBlock Text="Oct" Grid.Column="2" FontSize="13" Foreground="#B8B8C0" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                    <Button x:Name="BtnOctDown" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,6" FontSize="13" Content="-" Width="40" />
+                                    <TextBlock x:Name="TxtOct" Text="0" FontSize="12" Foreground="#FFB300" MinWidth="28"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Button x:Name="BtnOctUp" Background="#26262C" Foreground="#E6E6EA" BorderBrush="#34343C" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,6" FontSize="13" Content="+" Width="40" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
+            </Border>
 
-                <!-- Beat -->
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Beat" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Button x:Name="BtnBeat" Grid.Column="1" HorizontalAlignment="Stretch" Content="Disco" />
-                </Grid>
-                <Grid ColumnSpacing="6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Button x:Name="BtnIntro" Grid.Column="0" HorizontalAlignment="Stretch" Content="Intro (F5)" Tag="0" />
-                    <Button x:Name="BtnFill1" Grid.Column="1" HorizontalAlignment="Stretch" Content="Fill 1 (F6)" Tag="1" />
-                    <Button x:Name="BtnFill2" Grid.Column="2" HorizontalAlignment="Stretch" Content="Fill 2 (F7)" Tag="2" />
-                    <Button x:Name="BtnEnd" Grid.Column="3" HorizontalAlignment="Stretch" Content="End (F8)" Tag="3" />
-                    <Button x:Name="BtnStop" Grid.Column="4" HorizontalAlignment="Stretch" Content="Stop (F9)" Tag="4" />
-                </Grid>
-
-                <!-- Sliders -->
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Tempo" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Slider x:Name="SldTempo" Grid.Column="1" Minimum="0" Maximum="100" Value="0"
-                            ToolTipService.ToolTip="Right = slower" />
-                    <TextBlock Grid.Column="2" Text="Volume" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Slider x:Name="SldVolume" Grid.Column="3" Minimum="0" Maximum="127" Value="127" />
-                </Grid>
-
-                <!-- Effects -->
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Reverb" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Slider x:Name="SldReverb" Grid.Column="1" Minimum="0" Maximum="127" Value="40" />
-                    <TextBlock Grid.Column="2" Text="Chorus" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Slider x:Name="SldChorus" Grid.Column="3" Minimum="0" Maximum="127" Value="0" />
-                </Grid>
-
-                <!-- Synth-only effects -->
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Delay" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Slider x:Name="SldDelay" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
-                            ToolTipService.ToolTip="Echo (SoundFont output only)" />
-                    <TextBlock Grid.Column="2" Text="Drive" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Slider x:Name="SldDrive" Grid.Column="3" Minimum="0" Maximum="127" Value="0"
-                            ToolTipService.ToolTip="Distortion (SoundFont output only)" />
-                </Grid>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" MinWidth="80" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Tremolo" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Slider x:Name="SldTremolo" Grid.Column="1" Minimum="0" Maximum="127" Value="0"
-                            ToolTipService.ToolTip="Volume wobble (SoundFont output only)" />
-                    <TextBlock Grid.Column="2" Text="Tone" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Slider x:Name="SldTone" Grid.Column="3" Minimum="0" Maximum="127" Value="64"
-                            ToolTipService.ToolTip="Left = bass, right = treble (SoundFont output only)" />
-                </Grid>
-
-                <!-- Key + device -->
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
-                        <ColumnDefinition Width="60" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Key" VerticalAlignment="Center" Foreground="#C0C0C0" />
-                    <Button x:Name="BtnKey" Grid.Column="1" Content="C" HorizontalAlignment="Stretch" />
-                    <TextBlock Grid.Column="2" Text="Device" VerticalAlignment="Center" Foreground="#C0C0C0" Margin="12,0,0,0" />
-                    <Button x:Name="BtnDevice" Grid.Column="3" HorizontalAlignment="Stretch" Content="(none)" />
-                </Grid>
-            </StackPanel>
-
-            <!-- Drum pads (numpad layout) -->
-            <StackPanel x:Name="DrumPanel" Grid.Column="1" Grid.Row="0" Spacing="4">
-                <TextBlock Text="Drum pads (numpad, click to change sound)" Foreground="#808080" />
-                <Grid x:Name="DrumGrid" RowSpacing="4" ColumnSpacing="4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="56" />
-                        <ColumnDefinition Width="56" />
-                        <ColumnDefinition Width="56" />
-                    </Grid.ColumnDefinitions>
+            <!-- Drum pads (MPC style, 3x4, stretch to fill) -->
+            <Border x:Name="DrumPanel" Grid.Column="1" Background="#1A1A1E" BorderBrush="#2B2B32" BorderThickness="1"
+                    CornerRadius="12" Padding="14">
+                <Grid RowSpacing="10">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="40" />
-                        <RowDefinition Height="40" />
-                        <RowDefinition Height="40" />
-                        <RowDefinition Height="40" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="DRUM PADS" FontSize="11" FontWeight="SemiBold" Foreground="#6E6E78"
+                               ToolTipService.ToolTip="Click a pad to play. Right-click to change its sound." />
+                    <Grid x:Name="DrumGrid" Grid.Row="1" RowSpacing="6" ColumnSpacing="6" MinHeight="180">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                    </Grid>
                 </Grid>
-            </StackPanel>
+            </Border>
         </Grid>
 
-        <!-- Piano: keys are laid out in code to fill this area -->
-        <Grid x:Name="PianoHost" Grid.Row="1" MinHeight="120">
-            <Canvas x:Name="PianoCanvas" HorizontalAlignment="Left" VerticalAlignment="Top" />
-        </Grid>
+        <!-- Piano keybed -->
+        <Border Grid.Row="2" Background="#1A1A1E" BorderBrush="#2B2B32" BorderThickness="1" CornerRadius="12" Padding="10">
+            <Grid x:Name="PianoHost" MinHeight="150">
+                <Canvas x:Name="PianoCanvas" HorizontalAlignment="Stretch" VerticalAlignment="Top" />
+            </Grid>
+        </Border>
     </Grid>
 </Window>

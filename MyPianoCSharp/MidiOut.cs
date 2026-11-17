@@ -10,6 +10,8 @@ public interface IMidiSink
     void ChangeInstrument(int channel, int program);
     /// <summary>Sends a MIDI control change (e.g. 91 = reverb send, 93 = chorus send).</summary>
     void Control(int channel, int controller, int value);
+    /// <summary>Sends a pitch bend message (0..16383, 8192 is center).</summary>
+    void PitchBend(int channel, int value);
     /// <summary>Stops any hanging notes.</summary>
     void Silence();
 }
@@ -95,6 +97,14 @@ public sealed class MidiOut : IMidiSink, IDisposable
     public void NoteOn(int channel, int note, int velocity) => Send(0x90, channel, note, velocity);
 
     public void NoteOff(int channel, int note) => Send(0x80, channel, note);
+
+    public void PitchBend(int channel, int value)
+    {
+        value = Math.Clamp(value, 0, 16383);
+        int lsb = value & 0x7F;
+        int msb = (value >> 7) & 0x7F;
+        Send(0xE0, channel, lsb, msb);
+    }
 
     public void ChangeInstrument(int channel, int program)
     {

@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 using Windows.System;
 using Windows.UI;
 
@@ -37,13 +38,14 @@ public sealed partial class MainWindow : Window
 
     private readonly bool[] _held = new bool[256];
     private readonly Border[] _keyShapes = new Border[PianoKeys.Length];
-    private readonly Button[] _drumPads = new Button[12];
+    private readonly Border[] _drumPads = new Border[12];
     private readonly int[] _whitesBefore = new int[PianoKeys.Length];
     private int _whiteCount;
     private readonly Button[] _bankButtons;
 
     private int _instrSelect;
     private int _baseKey;
+    private int _octave;
     private int _volume = 127;
 
     private int _beatSelect;
@@ -51,14 +53,37 @@ public sealed partial class MainWindow : Window
     private int _beatMode = -1;   // -1 stopped, else section index
     private int _beatNext = -2;   // -2 none queued
 
+    // ---------- brushes ----------
+
     private static SolidColorBrush Brush(byte r, byte g, byte b) => new(Color.FromArgb(255, r, g, b));
+
+    private static LinearGradientBrush Grad(byte r1, byte g1, byte b1, byte r2, byte g2, byte b2)
+    {
+        var brush = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+        brush.GradientStops.Add(new GradientStop { Color = Color.FromArgb(255, r1, g1, b1), Offset = 0 });
+        brush.GradientStops.Add(new GradientStop { Color = Color.FromArgb(255, r2, g2, b2), Offset = 1 });
+        return brush;
+    }
+
     private static readonly SolidColorBrush Active = new(Colors.Gold);
-    private static readonly SolidColorBrush Idle = Brush(0x80, 0x80, 0x80);
+
+    // Piano key states
+    private static readonly LinearGradientBrush WhiteIdle = Grad(0xFF, 0xFF, 0xFF, 0xE2, 0xE2, 0xE9);
+    private static readonly LinearGradientBrush BlackIdle = Grad(0x3A, 0x3A, 0x40, 0x0A, 0x0A, 0x0C);
+    private static readonly LinearGradientBrush WhiteDown = Grad(0xFF, 0xE0, 0x82, 0xFF, 0xB3, 0x00);
+    private static readonly LinearGradientBrush BlackDown = Grad(0xFF, 0xCA, 0x28, 0xFF, 0x8F, 0x00);
+    private static readonly SolidColorBrush KeyBorderWhite = Brush(0xB8, 0xB8, 0xC0);
+    private static readonly SolidColorBrush KeyBorderBlack = Brush(0x00, 0x00, 0x00);
+
+    // Drum pad states
+    private static readonly SolidColorBrush PadIdleBg = Brush(0x24, 0x24, 0x2A);
+    private static readonly SolidColorBrush PadIdleFg = Brush(0xC8, 0xC8, 0xD0);
+    private static readonly SolidColorBrush PadDownFg = Brush(0x14, 0x14, 0x14);
 
     public MainWindow()
     {
         InitializeComponent();
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(1000, 560));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(1120, 720));
 
         _bankButtons = new[] { BtnBank0, BtnBank1, BtnBank2, BtnBank3 };
 
@@ -169,10 +194,10 @@ public sealed partial class MainWindow : Window
             _whitesBefore[i] = whiteCount;
             var shape = new Border
             {
-                Background = black ? new SolidColorBrush(Colors.Black) : new SolidColorBrush(Colors.White),
-                BorderBrush = new SolidColorBrush(Colors.Black),
+                Background = black ? BlackIdle : WhiteIdle,
+                BorderBrush = black ? KeyBorderBlack : KeyBorderWhite,
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(0, 0, 4, 4),
+                CornerRadius = new CornerRadius(0, 0, black ? 5 : 6, black ? 5 : 6),
                 Child = new TextBlock
                 {
                     Text = KeyLabel(PianoKeys[i]),
@@ -236,16 +261,33 @@ public sealed partial class MainWindow : Window
         for (int i = 0; i < 12; i++)
         {
             int index = i;
-            var pad = new Button
+            var pad = new Border
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
-                Padding = new Thickness(0),
-                Content = KeyLabel(DrumKeys[i]),
+                CornerRadius = new CornerRadius(9),
+                Background = PadIdleBg,
+                BorderBrush = Brush(0x3A, 0x3A, 0x46),
+                BorderThickness = new Thickness(1),
+                Child = new TextBlock
+                {
+                    Text = KeyLabel(DrumKeys[i]),
+                    FontSize = 16,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Foreground = PadIdleFg,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    IsHitTestVisible = false,
+                },
             };
             Grid.SetRow(pad, i / 3);
             Grid.SetColumn(pad, i % 3);
-            pad.Click += (_, _) => ShowDrumMenu(pad, index);
+
+            pad.PointerPressed += (s, e) => { ((UIElement)s).CapturePointer(e.Pointer); SetDrum(index, true); };
+            pad.PointerReleased += (s, e) => { ((UIElement)s).ReleasePointerCapture(e.Pointer); SetDrum(index, false); };
+            pad.PointerCaptureLost += (_, _) => SetDrum(index, false);
+            pad.RightTapped += (s, e) => { e.Handled = true; ShowDrumMenu(pad, index); };
+
             _drumPads[i] = pad;
             DrumGrid.Children.Add(pad);
             UpdatePadTooltip(i);
@@ -271,7 +313,6 @@ public sealed partial class MainWindow : Window
                     SelectInstrument(i);
                 }).ShowAt(btn);
             };
-            ToolTipService.SetToolTip(btn, $"F{b + 1}");
         }
 
         BtnBeat.Click += (_, _) =>
@@ -293,22 +334,31 @@ public sealed partial class MainWindow : Window
             b.Click += (_, _) => BeatControl(int.Parse((string)b.Tag));
         }
 
-        SldTempo.ValueChanged += (_, _) => UpdateBeatInterval();
-        SldVolume.ValueChanged += (_, e) => _volume = (int)e.NewValue;
+        SldTempo.ValueChanged += (_, e) => { TxtTempo.Text = ((int)e.NewValue).ToString(); UpdateBeatInterval(); };
+        SldVolume.ValueChanged += (_, e) => { _volume = (int)e.NewValue; TxtVolume.Text = _volume.ToString(); };
 
         SldReverb.Value = _settings.Reverb;
         SldChorus.Value = _settings.Chorus;
-        SldReverb.ValueChanged += (_, e) => { _settings.Reverb = (int)e.NewValue; ApplyEffects(); };
-        SldChorus.ValueChanged += (_, e) => { _settings.Chorus = (int)e.NewValue; ApplyEffects(); };
+        TxtReverb.Text = _settings.Reverb.ToString();
+        TxtChorus.Text = _settings.Chorus.ToString();
+        SldReverb.ValueChanged += (_, e) => { _settings.Reverb = (int)e.NewValue; TxtReverb.Text = ((int)e.NewValue).ToString(); ApplyEffects(); };
+        SldChorus.ValueChanged += (_, e) => { _settings.Chorus = (int)e.NewValue; TxtChorus.Text = ((int)e.NewValue).ToString(); ApplyEffects(); };
 
         SldDelay.Value = _settings.Delay;
         SldDrive.Value = _settings.Drive;
         SldTremolo.Value = _settings.Tremolo;
         SldTone.Value = _settings.Tone;
-        SldDelay.ValueChanged += (_, e) => { _settings.Delay = (int)e.NewValue; ApplyEffects(); };
-        SldDrive.ValueChanged += (_, e) => { _settings.Drive = (int)e.NewValue; ApplyEffects(); };
-        SldTremolo.ValueChanged += (_, e) => { _settings.Tremolo = (int)e.NewValue; ApplyEffects(); };
-        SldTone.ValueChanged += (_, e) => { _settings.Tone = (int)e.NewValue; ApplyEffects(); };
+        TxtDelay.Text = _settings.Delay.ToString();
+        TxtDrive.Text = _settings.Drive.ToString();
+        TxtTremolo.Text = _settings.Tremolo.ToString();
+        TxtTone.Text = _settings.Tone.ToString();
+        SldDelay.ValueChanged += (_, e) => { _settings.Delay = (int)e.NewValue; TxtDelay.Text = ((int)e.NewValue).ToString(); ApplyEffects(); };
+        SldDrive.ValueChanged += (_, e) => { _settings.Drive = (int)e.NewValue; TxtDrive.Text = ((int)e.NewValue).ToString(); ApplyEffects(); };
+        SldTremolo.ValueChanged += (_, e) => { _settings.Tremolo = (int)e.NewValue; TxtTremolo.Text = ((int)e.NewValue).ToString(); ApplyEffects(); };
+        SldTone.ValueChanged += (_, e) => { _settings.Tone = (int)e.NewValue; TxtTone.Text = ((int)e.NewValue).ToString(); ApplyEffects(); };
+
+        BtnOctDown.Click += (_, _) => ShiftOctave(-1);
+        BtnOctUp.Click += (_, _) => ShiftOctave(1);
 
         BtnKey.Click += (_, _) =>
         {
@@ -494,6 +544,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private int NoteFor(int i) => i + _baseKey + 48 + _octave * 12;
+
     private void SetKey(int i, bool down)
     {
         bool black = BlackSemitones.Contains(i % 12);
@@ -504,28 +556,40 @@ public sealed partial class MainWindow : Window
 
         if (down)
         {
-            shape.Background = Brush(black ? (byte)100 : (byte)200, black ? (byte)100 : (byte)200, black ? (byte)100 : (byte)200);
-            _midi.NoteOn(0, i + _baseKey + 48, _volume);
+            shape.Background = black ? BlackDown : WhiteDown;
+            _midi.NoteOn(0, NoteFor(i), _volume);
         }
         else
         {
-            shape.Background = new SolidColorBrush(black ? Colors.Black : Colors.White);
-            _midi.NoteOff(0, i + _baseKey + 48);
+            shape.Background = black ? BlackIdle : WhiteIdle;
+            _midi.NoteOff(0, NoteFor(i));
         }
     }
 
     private void SetDrum(int i, bool down)
     {
+        var pad = _drumPads[i];
         if (down)
         {
-            _drumPads[i].Background = Idle;
+            pad.Background = Active;
+            if (pad.Child is TextBlock t) t.Foreground = PadDownFg;
             _midi.NoteOn(9, _settings.Drums[i], 127);
         }
         else
         {
-            _drumPads[i].ClearValue(Control.BackgroundProperty);
+            pad.Background = PadIdleBg;
+            if (pad.Child is TextBlock t) t.Foreground = PadIdleFg;
             _midi.NoteOff(9, _settings.Drums[i]);
         }
+    }
+
+    private void ShiftOctave(int delta)
+    {
+        ReleaseAll();
+        _midi.Silence();
+        _octave = Math.Clamp(_octave + delta, -2, 2);
+        TxtOct.Text = _octave > 0 ? "+" + _octave : _octave.ToString();
+        ApplyEffects();
     }
 
     private void ReleaseAll()

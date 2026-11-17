@@ -89,6 +89,14 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
         lock (_lock) _synth.ProcessMidiMessage(channel, 0xB0, controller, value);
     }
 
+    public void PitchBend(int channel, int value)
+    {
+        value = Math.Clamp(value, 0, 16383);
+        int lsb = value & 0x7F;
+        int msb = (value >> 7) & 0x7F;
+        lock (_lock) _synth.ProcessMidiMessage(channel, 0xE0, lsb, msb);
+    }
+
     public void Silence()
     {
         lock (_lock) _synth.NoteOffAll(immediate: true);
