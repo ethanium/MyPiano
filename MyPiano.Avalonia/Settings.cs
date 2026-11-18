@@ -20,6 +20,8 @@ public sealed class Settings
     public int Tone { get; set; } = 64;
     public int[] Banks { get; set; } = new int[4];
     public int[] Drums { get; set; } = { 49, 57, 51, 45, 47, 48, 46, 42, 44, 37, 36, 40 };
+    /// <summary>True for the dark colour theme (the default), false for light.</summary>
+    public bool Dark { get; set; } = true;
 
     private static string FilePath => Path.Combine(AppContext.BaseDirectory, "config.json");
 

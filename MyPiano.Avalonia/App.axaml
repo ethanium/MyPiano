@@ -2,6 +2,43 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MyPiano.App"
              RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+
+                <!-- Dark theme (default) -->
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="WindowBg" Color="#0E0E10" />
+                    <SolidColorBrush x:Key="PanelBg" Color="#1A1A1E" />
+                    <SolidColorBrush x:Key="PanelBorder" Color="#2B2B32" />
+                    <SolidColorBrush x:Key="CtrlBg" Color="#26262C" />
+                    <SolidColorBrush x:Key="CtrlBorder" Color="#34343C" />
+                    <SolidColorBrush x:Key="TitleText" Color="#F2F2F5" />
+                    <SolidColorBrush x:Key="PrimaryText" Color="#E6E6EA" />
+                    <SolidColorBrush x:Key="SoftText" Color="#B8B8C0" />
+                    <SolidColorBrush x:Key="DimText" Color="#6E6E78" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#FFB300" />
+                </ResourceDictionary>
+
+                <!-- Light theme -->
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WindowBg" Color="#F2F2F5" />
+                    <SolidColorBrush x:Key="PanelBg" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="PanelBorder" Color="#D6D6DE" />
+                    <SolidColorBrush x:Key="CtrlBg" Color="#F0F0F4" />
+                    <SolidColorBrush x:Key="CtrlBorder" Color="#C9C9D2" />
+                    <SolidColorBrush x:Key="TitleText" Color="#101014" />
+                    <SolidColorBrush x:Key="PrimaryText" Color="#1C1C21" />
+                    <SolidColorBrush x:Key="SoftText" Color="#4A4A54" />
+                    <SolidColorBrush x:Key="DimText" Color="#6E6E78" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#B87A00" />
+                </ResourceDictionary>
+
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>

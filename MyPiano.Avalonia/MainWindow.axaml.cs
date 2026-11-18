@@ -10,6 +10,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using Avalonia.Threading;
 
 namespace MyPiano;
@@ -52,6 +53,7 @@ public partial class MainWindow : Window
     private readonly int[] _whitesBefore = new int[PianoKeys.Length];
     private int _whiteCount;
     private readonly Button[] _bankButtons;
+    private Button[] _bevelButtons = Array.Empty<Button>();
 
     private int _instrSelect;
     private int _baseKey;
@@ -63,7 +65,7 @@ public partial class MainWindow : Window
     private int _beatMode = -1;   // -1 stopped, else section index
     private int _beatNext = -2;   // -2 none queued
 
-    // ---------- brushes ----------
+    // ---------- theme ----------
 
     private static SolidColorBrush Brush(byte r, byte g, byte b) => new(Color.FromRgb(r, g, b));
 
@@ -81,9 +83,10 @@ public partial class MainWindow : Window
         return brush;
     }
 
-    private static readonly IBrush Active = Brushes.Gold;
+    /// <summary>True in dark mode (the default). Light mode swaps every palette entry.</summary>
+    private bool _dark = true;
 
-    // Piano key states (cylindrical shading: bright top -> body -> darker front lip)
+    // Piano keys are identical in both themes: a real piano looks the same either way.
     private static readonly LinearGradientBrush WhiteIdle = Grad3(0xFF, 0xFF, 0xFF, 0xF6, 0xF6, 0xF9, 0xD8, 0xD8, 0xDF);
     private static readonly LinearGradientBrush BlackIdle = Grad3(0x55, 0x55, 0x5C, 0x22, 0x22, 0x26, 0x08, 0x08, 0x0A);
     private static readonly LinearGradientBrush WhiteDown = Grad3(0xFF, 0xE6, 0xA0, 0xFF, 0xC2, 0x4D, 0xF0, 0x9A, 0x00);
@@ -92,18 +95,91 @@ public partial class MainWindow : Window
     private static readonly SolidColorBrush KeyBorderBlack = Brush(0x00, 0x00, 0x00);
     private static readonly SolidColorBrush WhiteLip = Brush(0xC4, 0xC4, 0xCC);
     private static readonly SolidColorBrush BlackLip = Brush(0x00, 0x00, 0x00);
+    private static readonly IBrush Active = Brushes.Gold;
 
-    // Drum pad states
-    private static readonly SolidColorBrush PadIdleBg = Brush(0x24, 0x24, 0x2A);
-    private static readonly SolidColorBrush PadIdleFg = Brush(0xC8, 0xC8, 0xD0);
-    private static readonly SolidColorBrush PadDownFg = Brush(0x14, 0x14, 0x14);
+    // Dark palette
+    private static readonly SolidColorBrush PadDarkBg = Brush(0x24, 0x24, 0x2A);
+    private static readonly SolidColorBrush PadDarkFg = Brush(0xC8, 0xC8, 0xD0);
+    private static readonly SolidColorBrush PadDarkBorder = Brush(0x3A, 0x3A, 0x46);
+    private static readonly LinearGradientBrush BtnDarkNormal = Grad3(0x34, 0x34, 0x3B, 0x2A, 0x2A, 0x30, 0x20, 0x20, 0x25);
+    private static readonly LinearGradientBrush BtnDarkHover = Grad3(0x40, 0x40, 0x48, 0x34, 0x34, 0x3B, 0x28, 0x28, 0x2E);
+    private static readonly LinearGradientBrush BtnDarkPressed = Grad3(0x1C, 0x1C, 0x21, 0x22, 0x22, 0x27, 0x28, 0x28, 0x2D);
+    private static readonly SolidColorBrush BtnDarkBorder = Brush(0x3C, 0x3C, 0x44);
+    private static readonly SolidColorBrush BtnDarkFg = Brush(0xE6, 0xE6, 0xEA);
 
-    // Beveled hardware-button gradients
-    private static readonly LinearGradientBrush BtnNormal = Grad3(0x34, 0x34, 0x3B, 0x2A, 0x2A, 0x30, 0x20, 0x20, 0x25);
-    private static readonly LinearGradientBrush BtnHover = Grad3(0x40, 0x40, 0x48, 0x34, 0x34, 0x3B, 0x28, 0x28, 0x2E);
-    private static readonly LinearGradientBrush BtnPressed = Grad3(0x1C, 0x1C, 0x21, 0x22, 0x22, 0x27, 0x28, 0x28, 0x2D);
-    private static readonly SolidColorBrush BtnBorder = Brush(0x3C, 0x3C, 0x44);
-    private static readonly SolidColorBrush BtnFg = Brush(0xE6, 0xE6, 0xEA);
+    // Light palette
+    private static readonly SolidColorBrush PadLightBg = Brush(0xE6, 0xE6, 0xEC);
+    private static readonly SolidColorBrush PadLightFg = Brush(0x24, 0x24, 0x2C);
+    private static readonly SolidColorBrush PadLightBorder = Brush(0xB8, 0xB8, 0xC4);
+    private static readonly LinearGradientBrush BtnLightNormal = Grad3(0xFF, 0xFF, 0xFF, 0xF2, 0xF2, 0xF7, 0xE2, 0xE2, 0xEA);
+    private static readonly LinearGradientBrush BtnLightHover = Grad3(0xFF, 0xFF, 0xFF, 0xF7, 0xF7, 0xFB, 0xEA, 0xEA, 0xF1);
+    private static readonly LinearGradientBrush BtnLightPressed = Grad3(0xDA, 0xDA, 0xE4, 0xE4, 0xE4, 0xEC, 0xEE, 0xEE, 0xF4);
+    private static readonly SolidColorBrush BtnLightBorder = Brush(0xB8, 0xB8, 0xC4);
+    private static readonly SolidColorBrush BtnLightFg = Brush(0x1C, 0x1C, 0x22);
+
+    // Drum pads and buttons, swapped by ApplyTheme.
+    private SolidColorBrush _padIdleBg = PadDarkBg;
+    private SolidColorBrush _padIdleFg = PadDarkFg;
+    private SolidColorBrush _padDownFg = PadDarkBg;
+    private SolidColorBrush _padBorder = PadDarkBorder;
+    private LinearGradientBrush _btnNormal = BtnDarkNormal;
+    private LinearGradientBrush _btnHover = BtnDarkHover;
+    private LinearGradientBrush _btnPressed = BtnDarkPressed;
+    private SolidColorBrush _btnBorder = BtnDarkBorder;
+    private SolidColorBrush _btnFg = BtnDarkFg;
+
+    // 24x24 icons for the theme button.
+    private static readonly Geometry SunIcon = Geometry.Parse(
+        "M12,7 A5,5 0 1,1 12,17 A5,5 0 1,1 12,7Z " +
+        "M11,1h2v3h-2z M11,20h2v3h-2z M1,11h3v2h-3z M20,11h3v2h-3z " +
+        "M4.22,5.64 L5.64,4.22 L7.76,6.34 L6.34,7.76Z M18.36,4.22 L19.78,5.64 L17.66,7.76 L16.24,6.34Z " +
+        "M4.22,18.36 L6.34,16.24 L7.76,17.66 L5.64,19.78Z M16.24,17.66 L17.66,16.24 L19.78,18.36 L18.36,19.78Z");
+    private static readonly Geometry MoonIcon = Geometry.Parse(
+        "M21,12.79 A9,9 0 1,1 11.21,3 A7,7 0 0,0 21,12.79Z");
+
+    /// <summary>Applies a colour theme to every element the code draws (XAML colours follow ThemeDictionaries).</summary>
+    private void ApplyTheme(bool dark)
+    {
+        _dark = dark;
+        RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
+
+        _padIdleBg = dark ? PadDarkBg : PadLightBg;
+        _padIdleFg = dark ? PadDarkFg : PadLightFg;
+        _padDownFg = dark ? PadDarkBg : PadLightBg;
+        _padBorder = dark ? PadDarkBorder : PadLightBorder;
+        _btnNormal = dark ? BtnDarkNormal : BtnLightNormal;
+        _btnHover = dark ? BtnDarkHover : BtnLightHover;
+        _btnPressed = dark ? BtnDarkPressed : BtnLightPressed;
+        _btnBorder = dark ? BtnDarkBorder : BtnLightBorder;
+        _btnFg = dark ? BtnDarkFg : BtnLightFg;
+
+        if (BtnTheme is not null)
+        {
+            // Show the theme a click switches to: sun in dark mode, moon in light mode.
+            BtnTheme.Content = new PathIcon { Data = dark ? SunIcon : MoonIcon, Width = 16, Height = 16 };
+            ToolTip.SetTip(BtnTheme, dark ? "Switch to light mode" : "Switch to dark mode");
+        }
+
+        foreach (var b in _bevelButtons) StyleBevel(b);
+
+        for (int i = 0; i < _drumPads.Length; i++)
+        {
+            var pad = _drumPads[i];
+            pad.BorderBrush = _padBorder;
+            bool down = pad.Tag is true;
+            pad.Background = down ? Active : _padIdleBg;
+            if (pad.Child is TextBlock t) t.Foreground = down ? _padDownFg : _padIdleFg;
+        }
+
+        for (int i = 0; i < _keyShapes.Length; i++)
+        {
+            bool black = BlackSemitones.Contains(i % 12);
+            bool down = _keyShapes[i].Tag is true;
+            _keyShapes[i].Background = down
+                ? (black ? BlackDown : WhiteDown)
+                : (black ? BlackIdle : WhiteIdle);
+        }
+    }
 
     public MainWindow()
     {
@@ -148,6 +224,7 @@ public partial class MainWindow : Window
 
         SelectBeat(0, start: false);
         SelectInstrument(_settings.Banks[0]);
+        ApplyTheme(_settings.Dark);
 
         Root.AddHandler(KeyDownEvent, new EventHandler<KeyEventArgs>(OnKeyDown),
             RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
@@ -352,28 +429,23 @@ public partial class MainWindow : Window
             int index = i;
             var pad = new Border
             {
-                // Initial square; recomputed on size changes in LayoutDrumPads.
-                Width = 64,
-                Height = 64,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                // Cells are square: LayoutDrumPads sizes the UniformGrid, the margin is the gap.
+                Margin = new Thickness(3),
                 CornerRadius = new CornerRadius(9),
-                Background = PadIdleBg,
-                BorderBrush = Brush(0x3A, 0x3A, 0x46),
+                Background = _padIdleBg,
+                BorderBrush = _padBorder,
                 BorderThickness = new Thickness(1),
                 Child = new TextBlock
                 {
                     Text = KeyLabel(DrumKeys[i]),
                     FontSize = 16,
                     FontWeight = FontWeight.SemiBold,
-                    Foreground = PadIdleFg,
+                    Foreground = _padIdleFg,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     IsHitTestVisible = false,
                 },
             };
-            Grid.SetRow(pad, i / 3);
-            Grid.SetColumn(pad, i % 3);
 
             pad.PointerPressed += (s, e) =>
             {
@@ -397,10 +469,10 @@ public partial class MainWindow : Window
         DrumPanel.SizeChanged += (_, _) => LayoutDrumPads();
     }
 
-    /// <summary>Sizes the drum pads as squares that fit the panel (3 columns x 4 rows).</summary>
+    /// <summary>Sizes the drum pad grid so every cell (and therefore pad) stays square.</summary>
     private void LayoutDrumPads()
     {
-        const double gap = 6;          // grid gaps
+        const double gap = 6;          // pad margin (3 on each side)
         const double padBorder = 28;   // DrumPanel Padding (14) * 2
         const double labelSpace = 30;  // section label + spacing above the grid
 
@@ -412,20 +484,18 @@ public partial class MainWindow : Window
         double availH = panelHeight - padBorder - labelSpace - gap * 3;  // 4 rows, 3 gaps
         if (availW <= 0 || availH <= 0) return;
 
-        double size = Math.Clamp(Math.Min(availW / 3, availH / 4), 36, 120);
+        double cell = Math.Clamp(Math.Min(availW / 3, availH / 4), 42, 126);
+        DrumGrid.Width = cell * 3;
+        DrumGrid.Height = cell * 4;
 
+        double font = Math.Clamp((cell - gap) * 0.3, 11, 22);
         foreach (var pad in _drumPads)
-        {
-            pad.Width = size;
-            pad.Height = size;
-            if (pad.Child is TextBlock t) t.FontSize = Math.Clamp(size * 0.3, 11, 22);
-        }
+            if (pad.Child is TextBlock t) t.FontSize = font;
     }
 
     private void WireControls()
     {
-        BtnInstrument.Click += (_, _) =>
-            BuildInstrumentMenu(i => SelectInstrument(i)).ShowAt(BtnInstrument);
+        BtnInstrument.Flyout = BuildInstrumentMenu(i => SelectInstrument(i));
 
         for (int b = 0; b < 4; b++)
         {
@@ -443,18 +513,15 @@ public partial class MainWindow : Window
             };
         }
 
-        BtnBeat.Click += (_, _) =>
+        var beatMenu = new MenuFlyout();
+        for (int i = 0; i < Beat.All.Length; i++)
         {
-            var menu = new MenuFlyout();
-            for (int i = 0; i < Beat.All.Length; i++)
-            {
-                int index = i;
-                var item = new MenuItem { Header = Beat.All[index].Name };
-                item.Click += (_, _) => SelectBeat(index, start: true);
-                menu.Items.Add(item);
-            }
-            menu.ShowAt(BtnBeat);
-        };
+            int index = i;
+            var item = new MenuItem { Header = Beat.All[index].Name };
+            item.Click += (_, _) => SelectBeat(index, start: true);
+            beatMenu.Items.Add(item);
+        }
+        BtnBeat.Flyout = beatMenu;
 
         foreach (var btn in new[] { BtnIntro, BtnFill1, BtnFill2, BtnEnd, BtnStop })
         {
@@ -488,87 +555,99 @@ public partial class MainWindow : Window
         BtnOctDown.Click += (_, _) => ShiftOctave(-1);
         BtnOctUp.Click += (_, _) => ShiftOctave(1);
 
-        BtnKey.Click += (_, _) =>
+        BtnTheme.Click += (_, _) =>
         {
-            var menu = new MenuFlyout();
-            for (int i = 0; i < 12; i++)
-            {
-                int index = i;
-                var item = new MenuItem { Header = NoteNames[index] };
-                item.Click += (_, _) =>
-                {
-                    _baseKey = index;
-                    BtnKey.Content = NoteNames[index];
-                    ReleaseAll();
-                    _midi.Silence();   // the original reopened the device to cut off hanging notes
-                    RefreshNoteLabels();
-                    ApplyEffects();    // reopening a hardware device resets its controllers
-                };
-                menu.Items.Add(item);
-            }
-            menu.ShowAt(BtnKey);
+            bool dark = !_dark;
+            ApplyTheme(dark);
+            _settings.Dark = dark;
+            _settings.Save();
         };
 
-        BtnDevice.Click += (_, _) =>
-        {
-            var menu = new MenuFlyout();
-            for (int i = 0; i < _devices.Count; i++)
-            {
-                int index = i;
-                var item = new MenuItem { Header = _devices[i] };
-                item.Click += (_, _) =>
-                {
-                    OpenDevice(index);
-                    SelectInstrument(_instrSelect);
-                };
-                menu.Items.Add(item);
-            }
-
-            menu.Items.Add(new Separator());
-            if (!string.IsNullOrEmpty(_settings.SoundFontPath) && File.Exists(_settings.SoundFontPath))
-            {
-                var current = new MenuItem { Header = "SoundFont synth: " + Path.GetFileName(_settings.SoundFontPath) };
-                current.Click += (_, _) =>
-                {
-                    if (TryUseSoundFont(_settings.SoundFontPath!)) SelectInstrument(_instrSelect);
-                };
-                menu.Items.Add(current);
-            }
-            var browse = new MenuItem { Header = "Load SoundFont (.sf2 / .sf3)…" };
-            browse.Click += async (_, _) => await PickSoundFontAsync();
-            menu.Items.Add(browse);
-
-            menu.ShowAt(BtnDevice);
-        };
+        BuildKeyMenu();
+        BuildDeviceMenu();
 
         _beatTimer.Tick += (_, _) => BeatTick();
 
         // Beveled hardware look for every button.
-        foreach (var b in new Button[]
-                 {
-                     BtnDevice, BtnInstrument, BtnBank0, BtnBank1, BtnBank2, BtnBank3,
-                     BtnBeat, BtnIntro, BtnFill1, BtnFill2, BtnEnd, BtnStop,
-                     BtnKey, BtnOctDown, BtnOctUp,
-                 })
+        _bevelButtons = new Button[]
+        {
+            BtnDevice, BtnInstrument, BtnBank0, BtnBank1, BtnBank2, BtnBank3,
+            BtnBeat, BtnIntro, BtnFill1, BtnFill2, BtnEnd, BtnStop,
+            BtnKey, BtnOctDown, BtnOctUp, BtnTheme,
+        };
+        foreach (var b in _bevelButtons)
         {
             StyleBevel(b);
         }
     }
 
-    /// <summary>Applies a beveled gradient + hover/press feedback to a button.</summary>
-    private static void StyleBevel(Button b)
+    private void BuildKeyMenu()
     {
-        b.Background = BtnNormal;
-        b.BorderBrush = BtnBorder;
+        var menu = new MenuFlyout();
+        for (int i = 0; i < 12; i++)
+        {
+            int index = i;
+            var item = new MenuItem { Header = NoteNames[index] };
+            item.Click += (_, _) =>
+            {
+                _baseKey = index;
+                BtnKey.Content = NoteNames[index];
+                ReleaseAll();
+                _midi.Silence();   // the original reopened the device to cut off hanging notes
+                RefreshNoteLabels();
+                ApplyEffects();    // reopening a hardware device resets its controllers
+            };
+            menu.Items.Add(item);
+        }
+        BtnKey.Flyout = menu;
+    }
+
+    private void BuildDeviceMenu()
+    {
+        var menu = new MenuFlyout();
+        for (int i = 0; i < _devices.Count; i++)
+        {
+            int index = i;
+            var item = new MenuItem { Header = _devices[i] };
+            item.Click += (_, _) =>
+            {
+                OpenDevice(index);
+                SelectInstrument(_instrSelect);
+            };
+            menu.Items.Add(item);
+        }
+
+        menu.Items.Add(new Separator());
+        if (!string.IsNullOrEmpty(_settings.SoundFontPath) && File.Exists(_settings.SoundFontPath))
+        {
+            var current = new MenuItem { Header = "SoundFont synth: " + Path.GetFileName(_settings.SoundFontPath) };
+            current.Click += (_, _) =>
+            {
+                if (TryUseSoundFont(_settings.SoundFontPath!)) SelectInstrument(_instrSelect);
+            };
+            menu.Items.Add(current);
+        }
+        var browse = new MenuItem { Header = "Load SoundFont (.sf2 / .sf3)…" };
+        browse.Click += async (_, _) => await PickSoundFontAsync();
+        menu.Items.Add(browse);
+
+        BtnDevice.Flyout = menu;
+    }
+
+    /// <summary>Applies a beveled gradient + hover/press feedback to a button.</summary>
+    private void StyleBevel(Button b)
+    {
+        b.Background = _btnNormal;
+        b.BorderBrush = _btnBorder;
         b.BorderThickness = new Thickness(1);
         b.CornerRadius = new CornerRadius(6);
-        b.Foreground = BtnFg;
+        b.Foreground = _btnFg;
         b.Padding = new Thickness(10, 6, 10, 6);
 
-        b.PointerEntered += (_, _) => { if (b.IsEnabled) b.Background = BtnHover; };
-        b.PointerExited += (_, _) => { if (b.IsEnabled) b.Background = BtnNormal; };
-        b.PointerPressed += (_, _) => { if (b.IsEnabled) b.Background = BtnPressed; };
-        b.PointerReleased += (_, _) => { if (b.IsEnabled) b.Background = BtnHover; };
+        b.PointerEntered += (_, _) => { if (b.IsEnabled) b.Background = _btnHover; };
+        b.PointerExited += (_, _) => { if (b.IsEnabled) b.Background = _btnNormal; };
+        b.PointerPressed += (_, _) => { if (b.IsEnabled) b.Background = _btnPressed; };
+        b.PointerReleased += (_, _) => { if (b.IsEnabled) b.Background = _btnHover; };
     }
 
     // ---------- menus ----------
@@ -752,13 +831,13 @@ public partial class MainWindow : Window
         if (down)
         {
             pad.Background = Active;
-            if (pad.Child is TextBlock t) t.Foreground = PadDownFg;
+            if (pad.Child is TextBlock t) t.Foreground = _padDownFg;
             _midi.NoteOn(9, _settings.Drums[i], 127);
         }
         else
         {
-            pad.Background = PadIdleBg;
-            if (pad.Child is TextBlock t) t.Foreground = PadIdleFg;
+            pad.Background = _padIdleBg;
+            if (pad.Child is TextBlock t) t.Foreground = _padIdleFg;
             _midi.NoteOff(9, _settings.Drums[i]);
         }
     }
@@ -783,7 +862,7 @@ public partial class MainWindow : Window
             int d = Array.IndexOf(DrumKeys, k);
             if (d >= 0) SetDrum(d, false);
         }
-        for (int b = 0; b < 4; b++) _bankButtons[b].Background = BtnNormal;
+        for (int b = 0; b < 4; b++) _bankButtons[b].Background = _btnNormal;
     }
 
     // ---------- keyboard ----------
@@ -829,7 +908,7 @@ public partial class MainWindow : Window
         _held.Remove(k);
 
         if (k >= Key.F1 && k <= Key.F4)
-            _bankButtons[k - Key.F1].Background = BtnNormal;
+            _bankButtons[k - Key.F1].Background = _btnNormal;
 
         int p = Array.IndexOf(PianoKeys, k);
         if (p >= 0) SetKey(p, false);
@@ -916,10 +995,10 @@ public partial class MainWindow : Window
             Margin = new Thickness(20),
             Padding = new Thickness(16, 8),
             CornerRadius = new CornerRadius(6),
-            Background = BtnNormal,
-            BorderBrush = BtnBorder,
+            Background = _btnNormal,
+            BorderBrush = _btnBorder,
             BorderThickness = new Thickness(1),
-            Foreground = BtnFg,
+            Foreground = _btnFg,
         };
 
         var dialog = new Window
