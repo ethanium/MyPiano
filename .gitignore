@@ -70,3 +70,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Local code-index data (Memtrace)
+.memdb/
