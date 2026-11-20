@@ -13,10 +13,9 @@ This repository holds **two versions of the same program**:
 
 | Folder | What it is |
 |---|---|
-| [`MyPiano/`](MyPiano) | The original **Visual Basic 6** project (uses the Windows `winmm` MIDI API) |
-| [`MyPianoCSharp/`](MyPianoCSharp) | A **C# / .NET 8 / WinUI 3** port with a resizable UI and an optional built-in SoundFont synthesizer |
-| [`MyPiano.Avalonia/`](MyPiano.Avalonia) | The same C# app rebuilt on **Avalonia UI** (cross-platform XAML) |
-| [`tools/Sf3Tool/`](tools/Sf3Tool) | Command-line tool that compresses `.sf2` SoundFonts to `.sf3` |
+| [`src/MyPiano/`](src/MyPiano) | The original **Visual Basic 6** project (uses the Windows `winmm` MIDI API) |
+| [`src/MyPiano.Avalonia/`](src/MyPiano.Avalonia) | A **C# / .NET 8 / Avalonia UI** port with a resizable UI and an optional built-in SoundFont synthesizer |
+| [`src/tools/Sf3Tool/`](src/tools/Sf3Tool) | Command-line tool that compresses `.sf2` SoundFonts to `.sf3` |
 
 ## Controls
 
@@ -48,31 +47,17 @@ Click a pad to choose which drum sound it plays.
 
 Picking a beat from the menu starts it with the intro. Fills and the ending are queued and begin when the section that is playing finishes, so they stay in time.
 
-## C# version (WinUI 3)
+## C# version (Avalonia)
 
-**Requirements:** Windows 10 version 1809 or later, and the [.NET 8 SDK](https://dotnet.microsoft.com/download).
-The Windows App SDK is bundled with the app, so no extra runtime is needed.
+[`src/MyPiano.Avalonia/`](src/MyPiano.Avalonia) is built on [Avalonia](https://avaloniaui.net/).
 
-**Build and run**
-
-```powershell
-dotnet build MyPianoCSharp\MyPianoCSharp.csproj -p:Platform=x64
-MyPianoCSharp\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\MyPianoCSharp.exe
-```
-
-Or open `MyPianoCSharp\MyPianoCSharp.slnx` in Visual Studio and choose the **x64** platform (x86 and ARM64 work too).
-
-## Avalonia version
-
-[`MyPiano.Avalonia/`](MyPiano.Avalonia) is the same app with its UI layer rebuilt on [Avalonia](https://avaloniaui.net/), so it is not tied to WinUI 3 or the Windows App SDK.
-All of the audio, SoundFont, effects and settings code is shared unchanged; only the window, XAML and input handling differ.
+**Requirements:** the [.NET 8 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
-dotnet build MyPiano.Avalonia\MyPiano.Avalonia.csproj
-MyPiano.Avalonia\bin\Debug\net8.0\MyMidi.exe
+dotnet build src\MyPiano.Avalonia\MyPiano.Avalonia.csproj
+src\MyPiano.Avalonia\bin\Debug\net8.0\MyMidi.exe
 ```
 
-The window, controls and keyboard shortcuts are the same as the WinUI version, including the square drum pads and the piano key proportions.
 Audio output still uses NAudio's WASAPI backend, so sound output remains Windows-only for now; the UI itself is cross-platform.
 
 ### Sound: Windows synth or SoundFont
@@ -80,7 +65,7 @@ Audio output still uses NAudio's WASAPI backend, so sound output remains Windows
 By default MIDI goes to a Windows MIDI device. Device 0 is normally the *Microsoft GS Wavetable Synth*, which is small and sounds dated.
 For much better sound the app has a built-in synthesizer that plays a General MIDI **SoundFont**:
 
-1. Put an `.sf2` or `.sf3` file in `MyPianoCSharp/SoundFonts/` and the app will pick it up on first run, **or**
+1. Put an `.sf2` or `.sf3` file in `src/MyPiano.Avalonia/SoundFonts/` and the app will pick it up on first run, **or**
 2. Click **Device**, then **Load SoundFont (.sf2 / .sf3)…** and choose a file.
 
 The choice is remembered in `config.json` next to the executable. Pick a normal Windows device from the same **Device** menu to switch back.
@@ -92,7 +77,7 @@ Two free General MIDI SoundFonts are included, as compressed `.sf3` files:
 | `FluidR3_GM.sf3` | 23 MB | Fuller sound; uses roughly 600 MB of memory when loaded |
 | `GeneralUser-GS.sf3` | 8 MB | Lighter; roughly 250 MB of memory |
 
-`.sf3` files take a second or two to decode at startup. Licenses are in [`MyPianoCSharp/SoundFonts/`](MyPianoCSharp/SoundFonts).
+`.sf3` files take a second or two to decode at startup. Licenses are in [`src/MyPiano.Avalonia/SoundFonts/`](src/MyPiano.Avalonia/SoundFonts).
 
 ### Effects
 
@@ -109,16 +94,16 @@ Six sliders shape the sound. Their settings are saved in `config.json`.
 
 Reverb and chorus are standard MIDI controls, so a Windows device only responds if its synth supports them.
 The other four are built into the app's own audio output, so their sliders are greyed out while a Windows device is selected.
-The code is in [`MyPianoCSharp/Effects.cs`](MyPianoCSharp/Effects.cs).
+The code is in [`src/MyPiano.Avalonia/Effects.cs`](src/MyPiano.Avalonia/Effects.cs).
 
 ### Compressing SoundFonts (`.sf2` to `.sf3`)
 
 GitHub rejects files over 100 MB and the original `FluidR3_GM.sf2` is about 148 MB, so it can't be pushed as is; the `.sf3` version (23 MB) can.
-`tools/Sf3Tool` shrinks a SoundFont to about 16-26% of its size using Ogg Vorbis (lossy, quality 0.5 by default):
+`src/tools/Sf3Tool` shrinks a SoundFont to about 16-26% of its size using Ogg Vorbis (lossy, quality 0.5 by default):
 
 ```powershell
-dotnet run --project tools\Sf3Tool -c Release -- compress in.sf2 out.sf3 [quality 0.0-1.0]
-dotnet run --project tools\Sf3Tool -c Release -- test in.sf2 out.sf3     # renders notes from both and compares
+dotnet run --project src\tools\Sf3Tool -c Release -- compress in.sf2 out.sf3 [quality 0.0-1.0]
+dotnet run --project src\tools\Sf3Tool -c Release -- test in.sf2 out.sf3     # renders notes from both and compares
 ```
 
 The tool encodes with libvorbis through [ffmpeg](https://ffmpeg.org/), which must be on your `PATH` (or set the `FFMPEG` environment variable to its location).
@@ -134,7 +119,7 @@ Planned next, in order (details in [docs/ROADMAP.md](docs/ROADMAP.md)):
 
 ## VB6 version
 
-Open `MyPiano/MyPiano.vbp` in the Visual Basic 6 IDE and run it. It needs `instrument.txt` and writes its settings to `config.dat` in the same folder.
+Open `src/MyPiano/MyPiano.vbp` in the Visual Basic 6 IDE and run it. It needs `instrument.txt` and writes its settings to `config.dat` in the same folder.
 Keep the `.frx` file with `frmPiano.frm`; it holds the form's binary resources.
 
 ## Credits
@@ -142,4 +127,4 @@ Keep the `.frx` file with `frmPiano.frm`; it holds the form's binary resources.
 - The original program came from Planet-Source-Code.com: <http://www.Planet-Source-Code.com/vb/scripts/ShowCode.asp?txtCodeId=43153&lngWId=1>.
   The author may have retained certain copyrights to this code. Please observe their request and the law by reviewing all copyright conditions at that URL.
 - SoundFonts: **FluidR3 GM** by Frank Wen and Toby Smithe (MIT License) and **GeneralUser GS** by S. Christian Collins (free to use, see its license).
-- C# libraries: [MeltySynth](https://github.com/sinshu/meltysynth) (SoundFont synthesizer), [NAudio](https://github.com/naudio/NAudio) (audio output), [StbVorbisSharp](https://github.com/StbSharp/StbVorbisSharp) (`.sf3` decoding), Windows App SDK (UI).
+- C# libraries: [MeltySynth](https://github.com/sinshu/meltysynth) (SoundFont synthesizer), [NAudio](https://github.com/naudio/NAudio) (audio output), [StbVorbisSharp](https://github.com/StbSharp/StbVorbisSharp) (`.sf3` decoding), [Avalonia](https://avaloniaui.net/) (UI).

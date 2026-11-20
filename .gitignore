@@ -1,9 +1,9 @@
 # ===========================================================================
-# MyPiano: C# / .NET 8 / WinUI 3 (MyPianoCSharp/, tools/)
+# MyPiano: C# / .NET 8 / Avalonia (src/MyPiano.Avalonia/, src/tools/)
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# .NET / C# / WinUI 3 / Visual Studio
+# .NET / C# / Avalonia / Visual Studio
 # ---------------------------------------------------------------------------
 # Build results
 [Bb]in/
@@ -47,14 +47,14 @@ coverage*.json
 *.p12
 
 # Per-machine runtime settings written next to the exe by the C# app
-MyPianoCSharp/config.json
+src/MyPiano.Avalonia/config.json
 
 # ---------------------------------------------------------------------------
 # SoundFonts
 # ---------------------------------------------------------------------------
 # .sf2 and .sf3 files are NOT ignored, so both can be committed.
 # Beware: GitHub rejects any single file over 100 MB, and FluidR3_GM.sf2 is ~148 MB.
-# Use the .sf3 version of large SoundFonts (see tools/Sf3Tool) if you want to push them.
+# Use the .sf3 version of large SoundFonts (see src/tools/Sf3Tool) if you want to push them.
 
 # ---------------------------------------------------------------------------
 # Editors / OS
