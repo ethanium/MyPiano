@@ -5,16 +5,21 @@ using MyPiano;
 
 // sf3tool compress <in.sf2> <out.sf3> [quality 0.0-1.0, default 0.5]
 // sf3tool test     <original.sf2> <compressed.sf3>
+// sf3tool list     <in.sf2|in.sf3>
 //
 // Compression encodes every sample with the real libvorbis encoder (through ffmpeg, which must be on
 // PATH or named by the FFMPEG environment variable). libvorbis streams are what other SF3 tools
 // (MuseScore, FluidSynth) expect, and they come back sample-aligned.
+if (args is ["list", var listPath])
+    return List(listPath);
+
 if (args.Length < 3 || args[0] is not ("compress" or "test"))
 {
     Console.WriteLine("""
         Usage:
           sf3tool compress <in.sf2> <out.sf3> [quality 0.0-1.0]   (default 0.5)
           sf3tool test     <original.sf2> <compressed.sf3>
+          sf3tool list     <in.sf2|in.sf3>                         (bank, program, name of every preset)
         """);
     return 1;
 }
@@ -22,6 +27,18 @@ if (args.Length < 3 || args[0] is not ("compress" or "test"))
 return args[0] == "compress"
     ? Compress(args[1], args[2], args.Length > 3 ? float.Parse(args[3], CultureInfo.InvariantCulture) : 0.5f)
     : Test(args[1], args[2]);
+
+// Prints every preset as "bank<TAB>program<TAB>name"; programs are 1-based like the app's menus,
+// bank 128 holds the drum kits.
+static int List(string path)
+{
+    SoundFont sf;
+    using (var stream = Sf3Loader.Open(path))
+        sf = new SoundFont(stream);
+    foreach (var p in sf.Presets.OrderBy(p => p.BankNumber).ThenBy(p => p.PatchNumber))
+        Console.WriteLine($"{p.BankNumber}\t{p.PatchNumber + 1}\t{p.Name.Trim()}");
+    return 0;
+}
 
 static int Compress(string input, string output, float quality)
 {

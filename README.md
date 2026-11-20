@@ -70,6 +70,10 @@ For much better sound the app has a built-in synthesizer that plays a General MI
 
 The choice is remembered in `config.json` next to the executable. Pick a normal Windows device from the same **Device** menu to switch back.
 
+Every SoundFont in the `SoundFonts` folder is listed in the **Device** menu, so you can switch between them directly.
+While a SoundFont is playing, the **Instrument** menu shows every preset it contains, not just the 128 General MIDI sounds:
+variations are listed after the sound they vary, keyboard drum kits get their own submenu, and **Drum Pad Kit** picks the kit used by the drum pads and beats.
+
 Two free General MIDI SoundFonts are included, as compressed `.sf3` files:
 
 | File | Size | Notes |
@@ -104,6 +108,7 @@ GitHub rejects files over 100 MB and the original `FluidR3_GM.sf2` is about 148 
 ```powershell
 dotnet run --project src\tools\Sf3Tool -c Release -- compress in.sf2 out.sf3 [quality 0.0-1.0]
 dotnet run --project src\tools\Sf3Tool -c Release -- test in.sf2 out.sf3     # renders notes from both and compares
+dotnet run --project src\tools\Sf3Tool -c Release -- list in.sf3                # bank, program and name of every preset
 ```
 
 The tool encodes with libvorbis through [ffmpeg](https://ffmpeg.org/), which must be on your `PATH` (or set the `FFMPEG` environment variable to its location).

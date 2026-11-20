@@ -18,7 +18,10 @@ public sealed class Settings
     public int Drive { get; set; } = 0;
     public int Tremolo { get; set; } = 0;
     public int Tone { get; set; } = 64;
+    /// <summary>Instrument on each of the F1-F4 buttons, stored as bank * 128 + program (old 0-127 values are bank 0).</summary>
     public int[] Banks { get; set; } = new int[4];
+    /// <summary>SoundFont drum kit (program in bank 128) used by the drum pads and beats.</summary>
+    public int DrumKit { get; set; }
     public int[] Drums { get; set; } = { 49, 57, 51, 45, 47, 48, 46, 42, 44, 37, 36, 40 };
     /// <summary>True for the dark colour theme (the default), false for light.</summary>
     public bool Dark { get; set; } = true;

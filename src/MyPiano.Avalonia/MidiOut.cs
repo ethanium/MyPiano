@@ -7,7 +7,8 @@ public interface IMidiSink
 {
     void NoteOn(int channel, int note, int velocity);
     void NoteOff(int channel, int note);
-    void ChangeInstrument(int channel, int program);
+    /// <summary>Selects a program (0-127) from a bank (bank select MSB, 0 = General MIDI).</summary>
+    void ChangeInstrument(int channel, int bank, int program);
     /// <summary>Sends a MIDI control change (e.g. 91 = reverb send, 93 = chorus send).</summary>
     void Control(int channel, int controller, int value);
     /// <summary>Sends a pitch bend message (0..16383, 8192 is center).</summary>
@@ -106,9 +107,9 @@ public sealed class MidiOut : IMidiSink, IDisposable
         Send(0xE0, channel, lsb, msb);
     }
 
-    public void ChangeInstrument(int channel, int program)
+    public void ChangeInstrument(int channel, int bank, int program)
     {
-        Send(0xB0, channel, 0, 0);   // bank select MSB
+        Send(0xB0, channel, 0, bank);   // bank select MSB
         Send(0xB0, channel, 32, 0);  // bank select LSB
         Send(0xC0, channel, program);
     }

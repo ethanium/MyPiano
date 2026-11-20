@@ -42,7 +42,19 @@ public partial class MainWindow : Window
     private readonly Settings _settings = Settings.Load();
     private readonly DispatcherTimer _beatTimer = new();
 
-    private readonly List<string> _instruments = new();
+    /// <summary>One playable preset. <see cref="Id"/> (bank * 128 + program) is what settings store.</summary>
+    private sealed record Instrument(int Bank, int Program, string Name)
+    {
+        public int Id => Bank << 7 | Program;
+    }
+
+    /// <summary>GM2 bank for drum kits that play on the keyboard channel (GeneralUser GS has these).</summary>
+    private const int KeyDrumBank = 120;
+
+    private readonly List<string> _gmNames = new();                 // Instrument.txt, used for Windows MIDI devices
+    private List<Instrument> _instruments = new();                  // what the current output offers
+    private List<Instrument> _drumKits = new();                     // SoundFont bank 128, for the drum pads
+    private Instrument _current = new(0, 0, "");
     private readonly List<string> _drumNames = new();   // index 0 == MIDI note 35
     private IReadOnlyList<string> _devices = Array.Empty<string>();
 
@@ -199,13 +211,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(_settings.SoundFontPath) || !File.Exists(_settings.SoundFontPath))
         {
             // First run (or file moved): use a SoundFont found in SoundFonts\ next to the exe.
-            var dir = Path.Combine(AppContext.BaseDirectory, "SoundFonts");
-            var found = Directory.Exists(dir)
-                ? Directory.EnumerateFiles(dir)
-                    .Where(f => f.EndsWith(".sf2", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".sf3", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(f => f.EndsWith(".sf3", StringComparison.OrdinalIgnoreCase)).ThenBy(f => f)
-                    .FirstOrDefault()
-                : null;
+            var found = FindSoundFonts().FirstOrDefault();
             if (found is not null)
             {
                 _settings.SoundFontPath = found;
@@ -257,7 +263,7 @@ public partial class MainWindow : Window
         {
             var lines = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Instrument.txt"));
             for (int i = 0; i < 128 && i < lines.Length; i++)
-                _instruments.Add(lines[i].Split('\t')[1]);
+                _gmNames.Add(lines[i].Split('\t')[1]);
             // line 128 is blank; drums follow (notes 35..66)
             for (int i = 129; i < lines.Length; i++)
             {
@@ -269,7 +275,7 @@ public partial class MainWindow : Window
         {
             ShowError("Could not load Instrument.txt: " + ex.Message);
         }
-        while (_instruments.Count < 128) _instruments.Add($"Instrument {_instruments.Count + 1}");
+        while (_gmNames.Count < 128) _gmNames.Add($"Instrument {_gmNames.Count + 1}");
         while (_drumNames.Count < 32) _drumNames.Add($"Drum {_drumNames.Count + 35}");
     }
 
@@ -495,7 +501,7 @@ public partial class MainWindow : Window
 
     private void WireControls()
     {
-        BtnInstrument.Flyout = BuildInstrumentMenu(i => SelectInstrument(i));
+        RefreshInstruments();
 
         for (int b = 0; b < 4; b++)
         {
@@ -505,11 +511,11 @@ public partial class MainWindow : Window
             btn.PointerPressed += (s, e) =>
             {
                 if (!e.GetCurrentPoint(btn).Properties.IsRightButtonPressed) return;
-                BuildInstrumentMenu(i =>
+                BuildInstrumentMenu(id =>
                 {
-                    _settings.Banks[bank] = i;
-                    SelectInstrument(i);
-                }).ShowAt(btn);
+                    _settings.Banks[bank] = id;
+                    SelectInstrument(id);
+                }, includeDrumKits: false).ShowAt(btn);
             };
         }
 
@@ -608,7 +614,12 @@ public partial class MainWindow : Window
         for (int i = 0; i < _devices.Count; i++)
         {
             int index = i;
-            var item = new MenuItem { Header = _devices[i] };
+            var item = new MenuItem
+            {
+                Header = _devices[i],
+                ToggleType = MenuItemToggleType.Radio,
+                IsChecked = _synth is null && _hardware.IsOpen && _settings.DeviceId == i,
+            };
             item.Click += (_, _) =>
             {
                 OpenDevice(index);
@@ -617,15 +628,27 @@ public partial class MainWindow : Window
             menu.Items.Add(item);
         }
 
+        // Every SoundFont in SoundFonts\ next to the exe, plus the current one if it lives elsewhere.
+        var fonts = FindSoundFonts().ToList();
+        if (_settings.SoundFontPath is { } saved && File.Exists(saved)
+            && !fonts.Any(f => string.Equals(Path.GetFullPath(f), Path.GetFullPath(saved), StringComparison.OrdinalIgnoreCase)))
+            fonts.Add(saved);
+
         menu.Items.Add(new Separator());
-        if (!string.IsNullOrEmpty(_settings.SoundFontPath) && File.Exists(_settings.SoundFontPath))
+        foreach (var font in fonts)
         {
-            var current = new MenuItem { Header = "SoundFont synth: " + Path.GetFileName(_settings.SoundFontPath) };
-            current.Click += (_, _) =>
+            string path = font;
+            var item = new MenuItem
             {
-                if (TryUseSoundFont(_settings.SoundFontPath!)) SelectInstrument(_instrSelect);
+                Header = "SoundFont: " + Path.GetFileName(path),
+                ToggleType = MenuItemToggleType.Radio,
+                IsChecked = _synth is not null && string.Equals(path, _settings.SoundFontPath, StringComparison.OrdinalIgnoreCase),
             };
-            menu.Items.Add(current);
+            item.Click += (_, _) =>
+            {
+                if (TryUseSoundFont(path)) SelectInstrument(_instrSelect);
+            };
+            menu.Items.Add(item);
         }
         var browse = new MenuItem { Header = "Load SoundFont (.sf2 / .sf3)…" };
         browse.Click += async (_, _) => await PickSoundFontAsync();
@@ -652,22 +675,112 @@ public partial class MainWindow : Window
 
     // ---------- menus ----------
 
-    private MenuFlyout BuildInstrumentMenu(Action<int> onPick)
+    // The 16 General MIDI instrument families, 8 programs each.
+    private static readonly string[] InstrumentFamilies =
+    {
+        "Piano", "Chromatic Percussion", "Organ", "Guitar",
+        "Bass", "Strings", "Ensemble", "Brass",
+        "Reed", "Pipe", "Synth Lead", "Synth Pad",
+        "Synth Effects", "Ethnic", "Percussive", "Sound Effects",
+    };
+
+    /// <summary>SoundFont files in SoundFonts\ next to the exe, .sf2 before .sf3, then by name.</summary>
+    private static IEnumerable<string> FindSoundFonts()
+    {
+        var dir = Path.Combine(AppContext.BaseDirectory, "SoundFonts");
+        if (!Directory.Exists(dir)) return Enumerable.Empty<string>();
+        return Directory.EnumerateFiles(dir)
+            .Where(f => f.EndsWith(".sf2", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".sf3", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f.EndsWith(".sf3", StringComparison.OrdinalIgnoreCase)).ThenBy(f => f);
+    }
+
+    /// <summary>
+    /// Rebuilds the instrument list for the current output: every preset of a loaded SoundFont,
+    /// or the 128 General MIDI names for a Windows MIDI device.
+    /// </summary>
+    private void RefreshInstruments()
+    {
+        _instruments = new List<Instrument>();
+        _drumKits = new List<Instrument>();
+        if (_synth is not null)
+        {
+            foreach (var p in _synth.Presets)
+            {
+                var inst = new Instrument(p.BankNumber, p.PatchNumber, p.Name.Trim());
+                if (p.BankNumber == 128) _drumKits.Add(inst);
+                else if (p.BankNumber < 128 && p.PatchNumber < 128) _instruments.Add(inst);
+            }
+            // Program order, each GM sound followed by its variations; keyboard drum kits last.
+            _instruments = _instruments
+                .OrderBy(i => i.Bank == KeyDrumBank).ThenBy(i => i.Program).ThenBy(i => i.Bank).ToList();
+            _drumKits = _drumKits.OrderBy(i => i.Program).ToList();
+        }
+        if (_instruments.Count == 0)
+            _instruments = _gmNames.Select((name, i) => new Instrument(0, i, name)).ToList();
+
+        BtnInstrument.Flyout = BuildInstrumentMenu(id => SelectInstrument(id), includeDrumKits: true);
+    }
+
+    private MenuFlyout BuildInstrumentMenu(Action<int> onPick, bool includeDrumKits)
     {
         var menu = new MenuFlyout();
+
+        MenuItem Item(Instrument inst)
+        {
+            var item = new MenuItem { Header = inst.Name };
+            item.Click += (_, _) => onPick(inst.Id);
+            return item;
+        }
+
         for (int family = 0; family < 16; family++)
         {
-            var sub = new MenuItem { Header = $"{family * 8 + 1}-{family * 8 + 8}: {_instruments[family * 8]}…" };
-            for (int j = 0; j < 8; j++)
+            var members = _instruments.Where(i => i.Bank != KeyDrumBank && i.Program / 8 == family).ToList();
+            if (members.Count == 0) continue;
+            var sub = new MenuItem { Header = InstrumentFamilies[family] };
+            foreach (var inst in members) sub.Items.Add(Item(inst));
+            menu.Items.Add(sub);
+        }
+
+        var keyKits = _instruments.Where(i => i.Bank == KeyDrumBank).ToList();
+        if (keyKits.Count > 0)
+        {
+            var sub = new MenuItem { Header = "Drum Kits (on keys)" };
+            foreach (var inst in keyKits) sub.Items.Add(Item(inst));
+            menu.Items.Add(sub);
+        }
+
+        if (includeDrumKits && _drumKits.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            var sub = new MenuItem { Header = "Drum Pad Kit" };
+            foreach (var kit in _drumKits)
             {
-                int index = family * 8 + j;
-                var item = new MenuItem { Header = _instruments[index] };
-                item.Click += (_, _) => onPick(index);
+                int program = kit.Program;
+                var item = new MenuItem
+                {
+                    Header = kit.Name,
+                    ToggleType = MenuItemToggleType.Radio,
+                    IsChecked = program == _settings.DrumKit,
+                };
+                item.Click += (_, _) =>
+                {
+                    _settings.DrumKit = program;
+                    ApplyDrumKit();
+                    RefreshInstruments();   // move the check mark
+                };
                 sub.Items.Add(item);
             }
             menu.Items.Add(sub);
         }
         return menu;
+    }
+
+    /// <summary>Selects the chosen SoundFont drum kit on the drum channel (Windows devices keep their own kit).</summary>
+    private void ApplyDrumKit()
+    {
+        if (_synth is null) return;
+        int kit = _drumKits.Any(k => k.Program == _settings.DrumKit) ? _settings.DrumKit : 0;
+        _midi.ChangeInstrument(9, 0, kit);
     }
 
     private void ShowDrumMenu(Control anchor, int pad)
@@ -714,6 +827,8 @@ public partial class MainWindow : Window
             BtnDevice.Content = "(none)";
             ShowError(ex.Message);
         }
+        RefreshInstruments();
+        BuildDeviceMenu();
     }
 
     /// <summary>Switches output to the built-in SoundFont synth. Returns false (and shows why) on failure.</summary>
@@ -730,6 +845,8 @@ public partial class MainWindow : Window
             _settings.SoundFontPath = path;
             _settings.UseSoundFont = true;
             BtnDevice.Content = "SoundFont: " + synth.Name;
+            RefreshInstruments();
+            BuildDeviceMenu();
             return true;
         }
         catch (Exception ex)
@@ -760,12 +877,20 @@ public partial class MainWindow : Window
         if (TryUseSoundFont(path)) SelectInstrument(_instrSelect);
     }
 
-    private void SelectInstrument(int index)
+    /// <summary>
+    /// Selects an instrument by id (bank * 128 + program). If the current output doesn't have that bank,
+    /// the plain GM program plays instead, and the id is kept so switching back restores the variation.
+    /// </summary>
+    private void SelectInstrument(int id)
     {
-        _instrSelect = index;
-        _midi.ChangeInstrument(0, index);
+        _instrSelect = id;
+        _current = _instruments.FirstOrDefault(i => i.Id == id)
+            ?? _instruments.FirstOrDefault(i => i.Bank == 0 && i.Program == (id & 127))
+            ?? _instruments[0];
+        _midi.ChangeInstrument(0, _current.Bank, _current.Program);
+        ApplyDrumKit();
         ApplyEffects();   // also covers a freshly opened device or synth
-        BtnInstrument.Content = _instruments[index];
+        BtnInstrument.Content = _current.Name;
     }
 
     /// <summary>Sends the reverb (CC 91) and chorus (CC 93) levels to the piano and drum channels.</summary>
@@ -876,8 +1001,8 @@ public partial class MainWindow : Window
         if (k == Key.PageUp || k == Key.PageDown)
         {
             int dir = k == Key.PageDown ? 1 : -1;
-            int next = (_instrSelect + dir + _instruments.Count) % _instruments.Count;
-            SelectInstrument(next);
+            int at = Math.Max(0, _instruments.IndexOf(_current));
+            SelectInstrument(_instruments[(at + dir + _instruments.Count) % _instruments.Count].Id);
             used = true;
         }
         else if (k >= Key.F1 && k <= Key.F4)

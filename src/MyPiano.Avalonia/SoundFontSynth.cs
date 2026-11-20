@@ -22,6 +22,9 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
     public EffectsChain Effects { get; } = new(SampleRate);
 
     public string Name { get; }
+
+    /// <summary>Every preset in the SoundFont: variation banks, and drum kits in bank 128.</summary>
+    public IReadOnlyList<Preset> Presets { get; }
     public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(SampleRate, 2);
 
     public SoundFontSynth(string soundFontPath)
@@ -33,8 +36,11 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
             EnableReverbAndChorus = true,
         };
         // .sf3 (compressed) files are decoded to PCM in memory first; .sf2 files are read directly.
+        SoundFont soundFont;
         using (var stream = Sf3Loader.Open(soundFontPath))
-            _synth = new Synthesizer(new SoundFont(stream), settings);
+            soundFont = new SoundFont(stream);
+        _synth = new Synthesizer(soundFont, settings);
+        Presets = soundFont.Presets;
         GC.Collect();   // drop the temporary decode buffers (several times the size of the file)
 
         _output = new WasapiOut(AudioClientShareMode.Shared, true, 40);   // 40 ms latency
@@ -74,12 +80,13 @@ public sealed class SoundFontSynth : IMidiSink, ISampleProvider, IDisposable
         lock (_lock) _synth.NoteOff(channel, note);
     }
 
-    public void ChangeInstrument(int channel, int program)
+    public void ChangeInstrument(int channel, int bank, int program)
     {
         lock (_lock)
         {
-            _synth.ProcessMidiMessage(channel, 0xB0, 0, 0);    // bank select MSB
-            _synth.ProcessMidiMessage(channel, 0xB0, 32, 0);   // bank select LSB
+            // MeltySynth adds 128 to the bank on the drum channel, so bank 0 there selects SoundFont bank 128.
+            _synth.ProcessMidiMessage(channel, 0xB0, 0, bank);   // bank select MSB
+            _synth.ProcessMidiMessage(channel, 0xB0, 32, 0);     // bank select LSB
             _synth.ProcessMidiMessage(channel, 0xC0, program, 0);
         }
     }
